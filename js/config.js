@@ -1,0 +1,4 @@
+window.SUPABASE_CONFIG = {
+    url: 'COLE_AQUI_A_SUPABASE_URL',
+    anonKey: 'COLE_AQUI_A_SUPABASE_ANON_KEY'
+};

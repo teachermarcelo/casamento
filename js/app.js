@@ -12,9 +12,9 @@ let settings = { id: 1 };
 const formatBRL = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
 const formatDate = (dateStr) => dateStr ? new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR') : 'Sem data';
 const getDaysLeft = (dateStr) => {
-  if (!dateStr) return 'N/A';
+  if (!dateStr) return 0;
   const diff = new Date(dateStr) - new Date();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 };
 
 // Navegação por Abas
@@ -29,37 +29,50 @@ document.querySelectorAll('[data-section]').forEach(link => {
   });
 });
 
-// Inicialização ao carregar a página
+// Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
+  console.log('🚀 CRM Casamento - Iniciando...');
   initModals();
   initForms();
-  await loadData();
   setupEventDelegation();
+  await loadData();
 });
 
-// --- CARREGAMENTO DE DADOS ---
+// Carregar dados do Supabase
 async function loadData() {
   try {
+    console.log('📡 Carregando dados do Supabase...');
+    
     const [resSvc, resSup, resPay, resSet] = await Promise.all([
       supabase.from('services').select('*').order('created_at', { ascending: false }),
-      supabase.from('suppliers').select('*').order('created_at', { ascending: false }),
+      supabase.from('suppliers').select('*').order('name', { ascending: true }),
       supabase.from('payments').select('*').order('payment_date', { ascending: false }),
       supabase.from('wedding_settings').select('*').limit(1).single()
     ]);
+
+    if (resSvc.error) throw new Error('Erro serviços: ' + resSvc.error.message);
+    if (resSup.error) throw new Error('Erro fornecedores: ' + resSup.error.message);
+    if (resPay.error) throw new Error('Erro pagamentos: ' + resPay.error.message);
 
     services = resSvc.data || [];
     suppliers = resSup.data || [];
     payments = resPay.data || [];
     settings = resSet.data || { id: 1 };
 
+    console.log('✅ Dados carregados:', { 
+      serviços: services.length, 
+      fornecedores: suppliers.length, 
+      pagamentos: payments.length 
+    });
+
     renderAll();
   } catch (err) {
-    console.error('Erro ao carregar dados:', err);
-    alert('Não foi possível conectar ao Supabase. Verifique suas chaves ou se as tabelas foram criadas.');
+    console.error('❌ Erro ao carregar dados:', err);
+    alert('Erro ao conectar com Supabase: ' + err.message);
   }
 }
 
-// --- RENDERIZAÇÃO ---
+// Renderizar tudo
 function renderAll() {
   renderDashboard();
   renderServicesTable();
@@ -80,34 +93,57 @@ function renderDashboard() {
   document.getElementById('dash-days-left').textContent = getDaysLeft(settings.wedding_date);
 
   // Próximos Vencimentos
-  const upcoming = services.filter(s => s.due_date && (s.value - (s.paid || 0)) > 0)
+  const upcoming = services
+    .filter(s => s.due_date && (s.value - (s.paid || 0)) > 0)
     .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
     .slice(0, 5);
+  
   const upList = document.getElementById('dash-upcoming');
-  upList.innerHTML = upcoming.length ? upcoming.map(s => `
-    <li class="list-group-item d-flex justify-content-between align-items-center">
-      <div><strong>${s.name}</strong><br><small class="text-muted">${formatDate(s.due_date)}</small></div>
-      <span class="badge bg-danger">${formatBRL(s.value - (s.paid || 0))}</span>
-    </li>`).join('') : '<li class="list-group-item text-center text-muted">Nenhum vencimento próximo</li>';
+  if (upcoming.length === 0) {
+    upList.innerHTML = '<li class="list-group-item text-center text-muted">Nenhum vencimento próximo</li>';
+  } else {
+    upList.innerHTML = upcoming.map(s => `
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+          <strong>${s.name}</strong><br>
+          <small class="text-muted">${formatDate(s.due_date)}</small>
+        </div>
+        <span class="badge bg-danger">${formatBRL(s.value - (s.paid || 0))}</span>
+      </li>
+    `).join('');
+  }
 
   // Progresso
   const progress = totalServices > 0 ? Math.min((totalPaid / totalServices) * 100, 100) : 0;
   document.getElementById('dash-progress').innerHTML = `
     <div class="progress mt-2">
-      <div class="progress-bar bg-success" role="progressbar" style="width: ${progress}%">${progress.toFixed(0)}%</div>
-    </div>
-    <small class="text-muted mt-1 d-block">${formatBRL(totalPaid)} de ${formatBRL(totalServices)}</small>`;
-
-  // Atividade Recente (Últimos 5 pagamentos)
-  const actList = document.getElementById('dash-activity');
-  actList.innerHTML = payments.slice(0, 5).map(p => `
-    <li class="list-group-item d-flex justify-content-between align-items-center">
-      <div>
-        <strong>${p.description || 'Pagamento registrado'}</strong><br>
-        <small class="text-muted">${formatDate(p.payment_date)} • ${p.payment_method.toUpperCase()}</small>
+      <div class="progress-bar bg-success" role="progressbar" style="width: ${progress}%">
+        ${progress.toFixed(0)}%
       </div>
-      <span class="badge bg-success">${formatBRL(p.amount)}</span>
-    </li>`).join('') || '<li class="list-group-item text-center text-muted">Nenhum pagamento registrado</li>';
+    </div>
+    <small class="text-muted mt-1 d-block">${formatBRL(totalPaid)} de ${formatBRL(totalServices)}</small>
+  `;
+
+  // Atividade Recente
+  const actList = document.getElementById('dash-activity');
+  if (payments.length === 0) {
+    actList.innerHTML = '<li class="list-group-item text-center text-muted">Nenhum pagamento registrado</li>';
+  } else {
+    actList.innerHTML = payments.slice(0, 5).map(p => {
+      const entity = p.entity_type === 'service' 
+        ? services.find(s => s.id === p.entity_id)?.name || 'Serviço' 
+        : suppliers.find(s => s.id === p.entity_id)?.name || 'Fornecedor';
+      return `
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <div>
+            <strong>${p.description || entity}</strong><br>
+            <small class="text-muted">${formatDate(p.payment_date)} • ${p.payment_method.toUpperCase()}</small>
+          </div>
+          <span class="badge bg-success">${formatBRL(p.amount)}</span>
+        </li>
+      `;
+    }).join('');
+  }
 }
 
 function renderServicesTable() {
@@ -116,10 +152,12 @@ function renderServicesTable() {
     tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">Nenhum serviço cadastrado</td></tr>';
     return;
   }
+
   tbody.innerHTML = services.map(s => {
     const remaining = (s.value || 0) - (s.paid || 0);
     const status = remaining <= 0 ? 'Pago' : remaining === (s.value || 0) ? 'Pendente' : 'Parcial';
     const badgeClass = status === 'Pago' ? 'bg-success' : status === 'Parcial' ? 'bg-warning text-dark' : 'bg-danger';
+    
     return `
       <tr>
         <td><strong>${s.name}</strong></td>
@@ -130,10 +168,15 @@ function renderServicesTable() {
         <td>${formatDate(s.due_date)}</td>
         <td><span class="badge ${badgeClass} badge-status">${status}</span></td>
         <td class="text-end">
-          <button class="btn btn-sm btn-outline-primary btn-edit" data-id="${s.id}" data-type="service"><i class="bi bi-pencil"></i></button>
-          <button class="btn btn-sm btn-outline-danger btn-delete" data-id="${s.id}" data-type="service"><i class="bi bi-trash"></i></button>
+          <button class="btn btn-sm btn-outline-primary btn-edit" data-id="${s.id}" data-type="service">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger btn-delete" data-id="${s.id}" data-type="service">
+            <i class="bi bi-trash"></i>
+          </button>
         </td>
-      </tr>`;
+      </tr>
+    `;
   }).join('');
 }
 
@@ -143,6 +186,7 @@ function renderSuppliersGrid() {
     container.innerHTML = '<p class="text-center text-muted w-100">Nenhum fornecedor cadastrado</p>';
     return;
   }
+
   container.innerHTML = suppliers.map(s => `
     <div class="col-md-4">
       <div class="card h-100">
@@ -150,8 +194,12 @@ function renderSuppliersGrid() {
           <div class="d-flex justify-content-between align-items-start mb-2">
             <h5 class="card-title mb-0">${s.name}</h5>
             <div class="d-flex gap-1">
-              <button class="btn btn-sm btn-light btn-edit" data-id="${s.id}" data-type="supplier"><i class="bi bi-pencil"></i></button>
-              <button class="btn btn-sm btn-light btn-delete text-danger" data-id="${s.id}" data-type="supplier"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-sm btn-light btn-edit" data-id="${s.id}" data-type="supplier">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-light btn-delete text-danger" data-id="${s.id}" data-type="supplier">
+                <i class="bi bi-trash"></i>
+              </button>
             </div>
           </div>
           <p class="text-muted mb-1">${s.category} • ${formatBRL(s.price)}</p>
@@ -159,7 +207,8 @@ function renderSuppliersGrid() {
           <small class="d-block"><i class="bi bi-credit-card me-1"></i> Pago: <strong class="text-success">${formatBRL(s.paid || 0)}</strong></small>
         </div>
       </div>
-    </div>`).join('');
+    </div>
+  `).join('');
 }
 
 function renderPaymentsTable() {
@@ -168,22 +217,30 @@ function renderPaymentsTable() {
     tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Nenhum pagamento registrado</td></tr>';
     return;
   }
+
   tbody.innerHTML = payments.map(p => {
     const entity = p.entity_type === 'service' 
       ? services.find(s => s.id === p.entity_id)?.name || 'Serviço' 
       : suppliers.find(s => s.id === p.entity_id)?.name || 'Fornecedor';
+    
     return `
       <tr>
         <td>${formatDate(p.payment_date)}</td>
-        <td>${p.description || entity} <br><small class="text-muted">${p.entity_type}</small></td>
+        <td>
+          ${p.description || entity}
+          <br><small class="text-muted">${p.entity_type}</small>
+        </td>
         <td class="text-end fw-bold text-success">${formatBRL(p.amount)}</td>
         <td><span class="badge bg-secondary">${p.payment_method.toUpperCase()}</span></td>
         <td><span class="badge bg-success">${p.status}</span></td>
         <td>${p.receipt_number || '-'}</td>
         <td class="text-end">
-          <button class="btn btn-sm btn-outline-danger btn-delete" data-id="${p.id}" data-type="payment"><i class="bi bi-trash"></i></button>
+          <button class="btn btn-sm btn-outline-danger btn-delete" data-id="${p.id}" data-type="payment">
+            <i class="bi bi-trash"></i>
+          </button>
         </td>
-      </tr>`;
+      </tr>
+    `;
   }).join('');
 }
 
@@ -197,32 +254,29 @@ function renderSettingsForm() {
   document.getElementById('set-location').value = settings.location || '';
 }
 
-// --- MODAIS & FORMULÁRIOS ---
+// Modais
 let currentEditId = null;
 let currentEditType = null;
 
 function initModals() {
-  const svcModal = new bootstrap.Modal(document.getElementById('serviceModal'));
-  const supModal = new bootstrap.Modal(document.getElementById('supplierModal'));
-  const payModal = new bootstrap.Modal(document.getElementById('paymentModal'));
-
   window.openModal = (type, id = null) => {
-    if (type === 'service') {
-      document.getElementById('serviceModalTitle').textContent = id ? 'Editar Serviço' : 'Adicionar Serviço';
-      svcModal.show();
-    } else if (type === 'supplier') {
-      document.getElementById('supplierModalTitle').textContent = id ? 'Editar Fornecedor' : 'Adicionar Fornecedor';
-      supModal.show();
-    } else if (type === 'payment') {
-      payModal.show();
-      populatePaymentSelects();
-    }
     currentEditId = id;
     currentEditType = type;
+    
+    if (type === 'service') {
+      document.getElementById('serviceModalTitle').textContent = id ? 'Editar Serviço' : 'Adicionar Serviço';
+      new bootstrap.Modal(document.getElementById('serviceModal')).show();
+    } else if (type === 'supplier') {
+      document.getElementById('supplierModalTitle').textContent = id ? 'Editar Fornecedor' : 'Adicionar Fornecedor';
+      new bootstrap.Modal(document.getElementById('supplierModal')).show();
+    } else if (type === 'payment') {
+      new bootstrap.Modal(document.getElementById('paymentModal')).show();
+      populatePaymentSelects();
+    }
   };
 
   window.closeAllModals = () => {
-    svcModal.hide(); supModal.hide(); payModal.hide();
+    document.querySelectorAll('.modal').forEach(modal => bootstrap.Modal.getInstance(modal)?.hide());
     resetForms();
   };
 }
@@ -235,6 +289,7 @@ function resetForms() {
   document.getElementById('sup-id').value = '';
 }
 
+// Formulários
 function initForms() {
   // Serviço
   document.getElementById('service-form').addEventListener('submit', async e => {
@@ -246,12 +301,17 @@ function initForms() {
       due_date: document.getElementById('svc-due-date').value || null,
       notes: document.getElementById('svc-notes').value
     };
+
     if (!currentEditId) {
-      await supabase.from('services').insert([data]);
+      const { error } = await supabase.from('services').insert([data]);
+      if (error) throw error;
     } else {
-      await supabase.from('services').update(data).eq('id', currentEditId);
+      const { error } = await supabase.from('services').update(data).eq('id', currentEditId);
+      if (error) throw error;
     }
-    closeAllModals(); await loadData();
+    
+    closeAllModals();
+    await loadData();
   });
 
   // Fornecedor
@@ -267,12 +327,17 @@ function initForms() {
       contact_phone: document.getElementById('sup-phone').value,
       contact_email: document.getElementById('sup-email').value
     };
+
     if (!currentEditId) {
-      await supabase.from('suppliers').insert([data]);
+      const { error } = await supabase.from('suppliers').insert([data]);
+      if (error) throw error;
     } else {
-      await supabase.from('suppliers').update(data).eq('id', currentEditId);
+      const { error } = await supabase.from('suppliers').update(data).eq('id', currentEditId);
+      if (error) throw error;
     }
-    closeAllModals(); await loadData();
+    
+    closeAllModals();
+    await loadData();
   });
 
   // Pagamento
@@ -288,8 +353,12 @@ function initForms() {
       receipt_number: document.getElementById('pay-receipt').value,
       status: 'completed'
     };
-    await supabase.from('payments').insert([data]);
-    closeAllModals(); await loadData();
+
+    const { error } = await supabase.from('payments').insert([data]);
+    if (error) throw error;
+    
+    closeAllModals();
+    await loadData();
   });
 
   // Configurações
@@ -303,19 +372,23 @@ function initForms() {
       theme: document.getElementById('set-theme').value,
       location: document.getElementById('set-location').value
     };
+
     const { count } = await supabase.from('wedding_settings').select('id').limit(1);
     if (count > 0) {
-      await supabase.from('wedding_settings').update(data).eq('id', 1);
+      const { error } = await supabase.from('wedding_settings').update(data).eq('id', 1);
+      if (error) throw error;
     } else {
       data.id = 1;
-      await supabase.from('wedding_settings').insert([data]);
+      const { error } = await supabase.from('wedding_settings').insert([data]);
+      if (error) throw error;
     }
+    
     alert('Configurações salvas com sucesso!');
     await loadData();
   });
 }
 
-// --- DELEÇÃO ---
+// Event Delegation
 function setupEventDelegation() {
   document.body.addEventListener('click', async e => {
     const btn = e.target.closest('button');
@@ -336,7 +409,9 @@ function setupEventDelegation() {
       const id = btn.dataset.id;
       const type = btn.dataset.type;
       if (confirm(`Tem certeza que deseja excluir este ${type === 'payment' ? 'pagamento' : 'registro'}?`)) {
-        await supabase.from(type === 'payment' ? 'payments' : type === 'service' ? 'services' : 'suppliers').delete().eq('id', id);
+        const table = type === 'payment' ? 'payments' : type === 'service' ? 'services' : 'suppliers';
+        const { error } = await supabase.from(table).delete().eq('id', id);
+        if (error) throw error;
         await loadData();
       }
     }
@@ -349,8 +424,16 @@ function populatePaymentSelects() {
   const type = document.getElementById('pay-type').value;
   const select = document.getElementById('pay-item');
   select.innerHTML = '<option value="">Selecione um item</option>';
-  if (type === 'service') services.forEach(s => select.innerHTML += `<option value="${s.id}">${s.name}</option>`);
-  if (type === 'supplier') suppliers.forEach(s => select.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+  
+  if (type === 'service') {
+    services.forEach(s => {
+      select.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+    });
+  } else if (type === 'supplier') {
+    suppliers.forEach(s => {
+      select.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+    });
+  }
 }
 
 function fillEditForm(type, id) {

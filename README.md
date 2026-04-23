@@ -1,56 +1,21 @@
-# CRM Casamento Perfeito — versão GitHub Pages + Supabase
+# 💍 CRM Casamento Perfeito
+Sistema completo de gestão para casamento, hospedado gratuitamente no **GitHub Pages** com banco de dados no **Supabase**.
 
-Esta pasta já está pronta para sair do PHP e funcionar como site estático no GitHub Pages.
+## 🚀 Como colocar no ar (passo a passo)
 
-## O que mudou
-- `planinha_casamento.php` virou `index.html`
-- o `api.php` foi substituído por `js/app.js`
-- o banco agora é o Supabase
-- a interface visual foi preservada
+### 1. Configurar o Banco de Dados (Supabase)
+1. Crie um projeto no [Supabase](https://supabase.com)
+2. Acesse **SQL Editor**
+3. Cole e execute **todo o conteúdo do arquivo `supabase/dados_completos.sql`**  
+   *(Inclui estrutura + todos os seus dados pré-carregados)*
+4. Vá em **Project Settings → API** e copie:
+   - `Project URL`
+   - `anon public key`
 
-## 1) Criar o banco no Supabase
-1. Abra seu projeto no Supabase
-2. Vá em **SQL Editor**
-3. Rode o arquivo `supabase/schema.sql`
-
-## 2) Pegar as chaves do projeto
-No Supabase:
-- **Project URL**
-- **anon public key**
-
-Depois preencha `js/config.js`:
-
+### 2. Configurar as Chaves
+Abra `config.js` e substitua:
 ```js
 window.SUPABASE_CONFIG = {
-    url: 'SUA_PROJECT_URL',
-    anonKey: 'SUA_ANON_PUBLIC_KEY'
+  url: 'SUA_URL_AQUI',
+  anonKey: 'SUA_CHAVE_ANON_AQUI'
 };
-```
-
-## 3) Subir para o GitHub
-Coloque estes arquivos no seu repositório e faça o push.
-
-## 4) Ativar GitHub Pages
-No repositório:
-- **Settings**
-- **Pages**
-- em **Build and deployment**, escolha:
-  - **Source: Deploy from a branch**
-  - **Branch: main**
-  - **Folder: /(root)**
-
-## 5) Importante sobre segurança
-Esta versão está com políticas abertas no Supabase para funcionar sem backend.
-Isso é útil para colocar no ar rápido, mas **não é o ideal para produção pública**.
-
-Se você quiser, na próxima etapa eu posso te entregar uma segunda versão com:
-- login por e-mail
-- RLS fechado
-- acesso apenas para você
-
-## Estrutura
-- `index.html`
-- `js/app.js`
-- `js/config.js`
-- `js/config.example.js`
-- `supabase/schema.sql`

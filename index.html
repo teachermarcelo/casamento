@@ -7,19 +7,160 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
   <style>
-    :root { --primary: #2c5e2e; --bg-light: #f8f9fa; }
-    body { background: var(--bg-light); font-family: system-ui, -apple-system, sans-serif; }
-    .navbar { background: var(--primary) !important; }
-    .nav-link.active { background: rgba(255,255,255,0.15); border-radius: 6px; }
+    :root {
+      --primary: #2c5e2e; --primary-dark: #1e4a20; --primary-light: #3d7a3f;
+      --bg-light: #f8f9fa; --surface: #ffffff; --border: #e9ecef;
+      --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+      --shadow: 0 4px 12px rgba(0,0,0,0.08);
+      --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+      --transition: all 0.2s ease;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: var(--bg-light);
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      color: #212529;
+      line-height: 1.5;
+      padding-bottom: 80px;
+    }
+    
+    /* Navbar */
+    .navbar { background: var(--primary) !important; box-shadow: var(--shadow); }
+    .navbar-brand { font-weight: 700; letter-spacing: -0.5px; }
+    .nav-link { font-weight: 500; padding: 0.5rem 1rem; border-radius: 8px; transition: var(--transition); }
+    .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.15); }
+    
+    /* Cards */
+    .card {
+      border: none; border-radius: 16px; box-shadow: var(--shadow);
+      transition: var(--transition); background: var(--surface);
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .card-header {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: white; border-radius: 16px 16px 0 0 !important;
+      font-weight: 600; padding: 1rem 1.25rem; border: none;
+    }
+    .card-body { padding: 1.25rem; }
+    
+    /* Stats */
+    .stat-card {
+      text-align: center; padding: 1.5rem; border-radius: 16px;
+      background: white; box-shadow: var(--shadow); cursor: pointer;
+      transition: var(--transition); border-left: 4px solid var(--primary);
+    }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+    .stat-card.bg-success { border-left-color: #198754; }
+    .stat-card.bg-warning { border-left-color: #ffc107; }
+    .stat-card.bg-info { border-left-color: #0dcaf0; }
+    .stat-value { font-size: 1.75rem; font-weight: 700; margin: 0.25rem 0; }
+    .stat-label { color: #6c757d; font-size: 0.9rem; font-weight: 500; }
+    
+    /* Tables */
+    .table { margin: 0; }
+    .table th {
+      background: #f1f5f9; font-weight: 600; color: #495057;
+      border: none; padding: 0.75rem 1rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .table td {
+      padding: 0.75rem 1rem; border-color: var(--border); vertical-align: middle;
+    }
+    .table-hover tbody tr {
+      cursor: pointer; transition: var(--transition);
+    }
+    .table-hover tbody tr:hover {
+      background: #f8fafc; transform: scale(1.005);
+    }
+    .table-clickable tr { cursor: pointer; }
+    
+    /* Badges */
+    .badge-status { font-weight: 500; padding: 0.4em 0.7em; border-radius: 6px; }
+    .badge-paid { background: #d1fae5; color: #065f46; }
+    .badge-pending { background: #fef3c7; color: #92400e; }
+    .badge-partial { background: #dbeafe; color: #1e40af; }
+    
+    /* Modals */
+    .modal-content {
+      border: none; border-radius: 20px; box-shadow: var(--shadow-lg);
+    }
+    .modal-header {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: white; border-radius: 20px 20px 0 0 !important; border: none;
+      padding: 1.25rem 1.5rem;
+    }
+    .modal-title { font-weight: 600; }
+    .modal-body { padding: 1.5rem; }
+    .modal-footer { border: none; padding: 1rem 1.5rem 1.5rem; }
+    
+    /* Floating Action Buttons */
+    .fab-container {
+      position: fixed; bottom: 24px; right: 24px; z-index: 1050;
+      display: flex; flex-direction: column; gap: 12px; align-items: flex-end;
+    }
+    .fab {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--primary); color: white; border: none;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: var(--shadow-lg); cursor: pointer;
+      transition: var(--transition); font-size: 1.25rem;
+    }
+    .fab:hover { transform: scale(1.1); background: var(--primary-dark); }
+    .fab-secondary { background: #6c757d; }
+    .fab-secondary:hover { background: #5a6268; }
+    .fab-success { background: #198754; }
+    .fab-success:hover { background: #146c43; }
+    .fab-label {
+      position: absolute; right: 68px; top: 50%; transform: translateY(-50%);
+      background: #333; color: white; padding: 4px 12px; border-radius: 6px;
+      font-size: 0.8rem; white-space: nowrap; opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .fab:hover .fab-label { opacity: 1; }
+    
+    /* Detail Modal */
+    .detail-grid { display: grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1rem; }
+    .detail-label { color: #6c757d; font-weight: 500; }
+    .detail-value { font-weight: 600; }
+    
+    /* Last Payment Widget */
+    .last-payment-card {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white; border-radius: 16px; padding: 1.25rem;
+      box-shadow: var(--shadow); cursor: pointer; transition: var(--transition);
+    }
+    .last-payment-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .last-payment-amount { font-size: 1.5rem; font-weight: 700; }
+    .last-payment-meta { opacity: 0.9; font-size: 0.9rem; }
+    
+    /* Utilities */
+    .text-primary { color: var(--primary) !important; }
+    .text-success { color: #198754 !important; }
+    .text-warning { color: #ffc107 !important; }
+    .text-danger { color: #dc3545 !important; }
+    .fw-semibold { font-weight: 600 !important; }
+    .cursor-pointer { cursor: pointer; }
     .section-box { display: none; }
-    .section-box.active { display: block; }
-    .stat-card { transition: transform .2s; }
-    .stat-card:hover { transform: translateY(-3px); }
-    .badge-status { font-size: 0.85rem; }
-    .modal-header { background: var(--primary); color: #fff; }
-    .btn-close { filter: invert(1); }
-    .table th { font-weight: 600; background: #e9ecef; }
-    .placeholder-text { color: #6c757d; font-style: italic; }
+    .section-box.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    /* Search & Filter */
+    .search-box {
+      position: relative; max-width: 300px;
+    }
+    .search-box input {
+      padding-left: 2.5rem; border-radius: 10px; border: 1px solid var(--border);
+    }
+    .search-box i {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      color: #6c757d;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .fab-container { bottom: 16px; right: 16px; }
+      .stat-value { font-size: 1.5rem; }
+      .table-responsive { font-size: 0.9rem; }
+    }
   </style>
 </head>
 <body>
@@ -27,18 +168,18 @@
 <!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
   <div class="container">
-    <a class="navbar-brand fw-bold" href="#"><i class="bi bi-heart-fill me-2"></i>CRM Casamento Perfeito</a>
+    <a class="navbar-brand" href="#"><i class="bi bi-heart-fill me-2"></i>CRM Casamento Perfeito</a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navMenu">
       <ul class="navbar-nav ms-auto gap-1">
-        <li class="nav-item"><a class="nav-link active" href="#" data-section="dashboard">Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-section="servicos">Serviços</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-section="fornecedores">Fornecedores</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-section="orcamento">Orçamento</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-section="pagamentos">Pagamentos</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-section="configuracoes">Configurações</a></li>
+        <li class="nav-item"><a class="nav-link active" href="#" data-section="dashboard"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" data-section="servicos"><i class="bi bi-concierge-bell me-1"></i>Serviços</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" data-section="fornecedores"><i class="bi bi-people me-1"></i>Fornecedores</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" data-section="orcamento"><i class="bi bi-calculator me-1"></i>Orçamento</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" data-section="pagamentos"><i class="bi bi-wallet2 me-1"></i>Pagamentos</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" data-section="configuracoes"><i class="bi bi-gear me-1"></i>Config</a></li>
       </ul>
     </div>
   </div>
@@ -48,55 +189,57 @@
 
   <!-- DASHBOARD -->
   <section id="dashboard" class="section-box active">
+    <!-- Stats Grid -->
     <div class="row g-3 mb-4">
       <div class="col-md-3">
-        <div class="card stat-card bg-primary text-white h-100">
-          <div class="card-body text-center">
-            <h6 class="card-title mb-1">Orçamento Total</h6>
-            <h3 id="dash-budget-total">R$ 0,00</h3>
-          </div>
+        <div class="stat-card" onclick="showSection('orcamento')">
+          <div class="stat-label">Orçamento Total</div>
+          <div class="stat-value" id="dash-budget-total">R$ 0,00</div>
+          <small class="text-muted">Clique para detalhes</small>
         </div>
       </div>
       <div class="col-md-3">
-        <div class="card stat-card bg-success text-white h-100">
-          <div class="card-body text-center">
-            <h6 class="card-title mb-1">Total Pago</h6>
-            <h3 id="dash-paid-total">R$ 0,00</h3>
-          </div>
+        <div class="stat-card bg-success" onclick="showSection('pagamentos')">
+          <div class="stat-label">Total Pago</div>
+          <div class="stat-value" id="dash-paid-total">R$ 0,00</div>
+          <small class="text-white-50">Ver pagamentos</small>
         </div>
       </div>
       <div class="col-md-3">
-        <div class="card stat-card bg-warning text-dark h-100">
-          <div class="card-body text-center">
-            <h6 class="card-title mb-1">Total Pendente</h6>
-            <h3 id="dash-pending-total">R$ 0,00</h3>
-          </div>
+        <div class="stat-card bg-warning" onclick="showSection('servicos')">
+          <div class="stat-label">Total Pendente</div>
+          <div class="stat-value" id="dash-pending-total">R$ 0,00</div>
+          <small class="text-dark">Ver pendências</small>
         </div>
       </div>
       <div class="col-md-3">
-        <div class="card stat-card bg-info text-white h-100">
-          <div class="card-body text-center">
-            <h6 class="card-title mb-1">Dias para o Casamento</h6>
-            <h3 id="dash-days-left">0</h3>
-          </div>
+        <div class="stat-card bg-info">
+          <div class="stat-label">Dias para o Casamento</div>
+          <div class="stat-value" id="dash-days-left">0</div>
+          <small class="text-white-50" id="wedding-date-display">—</small>
         </div>
       </div>
     </div>
 
+    <!-- Last Payment + Quick Actions -->
     <div class="row g-3 mb-4">
       <div class="col-md-4">
-        <div class="card h-100">
-          <div class="card-header bg-white fw-bold">Atividade Recente</div>
-          <div class="card-body p-0">
-            <ul class="list-group list-group-flush" id="dash-activity">
-              <li class="list-group-item text-center text-muted">Carregando atividades...</li>
-            </ul>
+        <div class="last-payment-card" id="last-payment-widget" onclick="openLastPaymentDetail()">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <small class="opacity-75">Último Pagamento</small>
+              <div class="last-payment-amount" id="last-payment-amount">R$ 0,00</div>
+            </div>
+            <i class="bi bi-arrow-right-circle fs-4 opacity-75"></i>
+          </div>
+          <div class="last-payment-meta mt-2" id="last-payment-meta">
+            Nenhum pagamento registrado
           </div>
         </div>
       </div>
       <div class="col-md-8">
         <div class="card h-100">
-          <div class="card-header bg-white fw-bold">Ações Rápidas</div>
+          <div class="card-header"><i class="bi bi-lightning me-2"></i>Ações Rápidas</div>
           <div class="card-body d-flex flex-wrap gap-2">
             <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#serviceModal" data-action="new-service">
               <i class="bi bi-plus-circle me-1"></i> Novo Serviço
@@ -107,37 +250,41 @@
             <button class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#paymentModal" data-action="new-payment">
               <i class="bi bi-currency-dollar me-1"></i> Registrar Pagamento
             </button>
+            <button class="btn btn-outline-info" onclick="exportData()">
+              <i class="bi bi-download me-1"></i> Exportar
+            </button>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Activity + Upcoming -->
     <div class="row g-3">
       <div class="col-md-4">
         <div class="card h-100">
-          <div class="card-header bg-white fw-bold">Próximos Vencimentos</div>
+          <div class="card-header"><i class="bi bi-clock-history me-2"></i>Próximos Vencimentos</div>
           <div class="card-body p-0">
             <ul class="list-group list-group-flush" id="dash-upcoming">
-              <li class="list-group-item text-center text-muted">Nenhum vencimento próximo</li>
+              <li class="list-group-item text-center text-muted">Carregando...</li>
             </ul>
           </div>
         </div>
       </div>
       <div class="col-md-4">
         <div class="card h-100">
-          <div class="card-header bg-white fw-bold">Fornecedores Selecionados</div>
+          <div class="card-header"><i class="bi bi-activity me-2"></i>Atividade Recente</div>
           <div class="card-body p-0">
-            <ul class="list-group list-group-flush" id="dash-selected">
-              <li class="list-group-item text-center text-muted">Nenhum fornecedor selecionado</li>
+            <ul class="list-group list-group-flush" id="dash-activity">
+              <li class="list-group-item text-center text-muted">Carregando...</li>
             </ul>
           </div>
         </div>
       </div>
       <div class="col-md-4">
         <div class="card h-100">
-          <div class="card-header bg-white fw-bold">Progresso do Orçamento</div>
+          <div class="card-header"><i class="bi bi-graph-up me-2"></i>Progresso</div>
           <div class="card-body">
-            <div id="dash-progress" class="text-muted placeholder-text">Carregando progresso...</div>
+            <div id="dash-progress" class="text-muted">Carregando...</div>
           </div>
         </div>
       </div>
@@ -146,72 +293,89 @@
 
   <!-- SERVIÇOS -->
   <section id="servicos" class="section-box">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h3 class="mb-0">Serviços Gerais</h3>
-      <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#serviceModal" data-action="new-service">
-        <i class="bi bi-plus-lg me-1"></i> Adicionar Serviço
-      </button>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <h3 class="mb-0"><i class="bi bi-concierge-bell me-2"></i>Serviços Gerais</h3>
+      <div class="d-flex gap-2">
+        <div class="search-box">
+          <i class="bi bi-search"></i>
+          <input type="text" class="form-control form-control-sm" id="search-services" placeholder="Buscar serviço...">
+        </div>
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#serviceModal" data-action="new-service">
+          <i class="bi bi-plus-lg"></i> Adicionar
+        </button>
+      </div>
     </div>
     <div class="card">
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
+          <table class="table table-hover align-middle mb-0 table-clickable" id="services-table">
             <thead>
               <tr>
-                <th>Serviço</th>
-                <th>Categoria</th>
-                <th class="text-end">Valor Total</th>
-                <th class="text-end">Valor Pago</th>
-                <th class="text-end">Restante</th>
-                <th>Vencimento</th>
-                <th>Status</th>
-                <th class="text-end">Ações</th>
+                <th>Serviço</th><th>Categoria</th><th class="text-end">Total</th>
+                <th class="text-end">Pago</th><th class="text-end">Restante</th>
+                <th>Vencimento</th><th>Status</th><th class="text-end">Ações</th>
               </tr>
             </thead>
             <tbody id="services-table-body">
-              <tr><td colspan="8" class="text-center py-4 placeholder-text">Carregando serviços...</td></tr>
+              <tr><td colspan="8" class="text-center py-4 text-muted">Carregando serviços...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </div>
+    <div class="text-muted small mt-2" id="services-count">0 registros</div>
   </section>
 
   <!-- FORNECEDORES -->
   <section id="fornecedores" class="section-box">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h3 class="mb-0">Fornecedores</h3>
-      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#supplierModal" data-action="new-supplier">
-        <i class="bi bi-plus-lg me-1"></i> Adicionar Fornecedor
-      </button>
-    </div>
-    <div class="card">
-      <div class="card-body">
-        <div id="suppliers-container" class="row g-3">
-          <p class="text-center text-muted w-100">Carregando fornecedores...</p>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <h3 class="mb-0"><i class="bi bi-people me-2"></i>Fornecedores</h3>
+      <div class="d-flex gap-2">
+        <div class="search-box">
+          <i class="bi bi-search"></i>
+          <input type="text" class="form-control form-control-sm" id="search-suppliers" placeholder="Buscar fornecedor...">
         </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#supplierModal" data-action="new-supplier">
+          <i class="bi bi-plus-lg"></i> Adicionar
+        </button>
       </div>
     </div>
+    <div class="row g-3" id="suppliers-container">
+      <div class="col-12 text-center text-muted py-4">Carregando fornecedores...</div>
+    </div>
+    <div class="text-muted small mt-2" id="suppliers-count">0 registros</div>
   </section>
 
   <!-- ORÇAMENTO -->
   <section id="orcamento" class="section-box">
-    <h3 class="mb-3">Orçamento Detalhado</h3>
+    <h3 class="mb-3"><i class="bi bi-calculator me-2"></i>Orçamento Detalhado</h3>
     <div class="row g-3">
       <div class="col-md-6">
         <div class="card h-100">
-          <div class="card-header bg-white fw-bold">Resumo Financeiro</div>
+          <div class="card-header">Resumo Financeiro</div>
           <div class="card-body" id="budget-summary">
-            <p class="text-muted placeholder-text">Carregando orçamento...</p>
+            <p class="text-muted">Carregando...</p>
           </div>
         </div>
       </div>
       <div class="col-md-6">
         <div class="card h-100">
-          <div class="card-header bg-white fw-bold">Distribuição por Categoria</div>
+          <div class="card-header">Por Categoria</div>
           <div class="card-body" id="budget-categories">
-            <p class="text-muted placeholder-text">Carregando distribuição...</p>
+            <p class="text-muted">Carregando...</p>
           </div>
+        </div>
+      </div>
+    </div>
+    <!-- All Entries -->
+    <div class="card mt-3">
+      <div class="card-header">Todas as Entradas</div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover" id="all-entries-table">
+            <thead><tr><th>Tipo</th><th>Nome</th><th>Categoria</th><th class="text-end">Valor</th><th class="text-end">Pago</th><th>Status</th></tr></thead>
+            <tbody id="all-entries-body"><tr><td colspan="6" class="text-center text-muted">Carregando...</td></tr></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -219,122 +383,129 @@
 
   <!-- PAGAMENTOS -->
   <section id="pagamentos" class="section-box">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h3 class="mb-0">Gestão de Pagamentos</h3>
-      <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#paymentModal" data-action="new-payment">
-        <i class="bi bi-currency-dollar me-1"></i> Novo Pagamento
-      </button>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <h3 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Gestão de Pagamentos</h3>
+      <div class="d-flex gap-2">
+        <div class="search-box">
+          <i class="bi bi-search"></i>
+          <input type="text" class="form-control form-control-sm" id="search-payments" placeholder="Buscar pagamento...">
+        </div>
+        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#paymentModal" data-action="new-payment">
+          <i class="bi bi-plus-lg"></i> Novo
+        </button>
+      </div>
     </div>
     <div class="card">
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
+          <table class="table table-hover align-middle mb-0 table-clickable" id="payments-table">
             <thead>
               <tr>
-                <th>Data</th>
-                <th>Descrição</th>
-                <th class="text-end">Valor</th>
-                <th>Método</th>
-                <th>Status</th>
-                <th>Comprovante</th>
-                <th class="text-end">Ações</th>
+                <th>Data</th><th>Descrição</th><th class="text-end">Valor</th>
+                <th>Método</th><th>Status</th><th>Comprovante</th><th class="text-end">Ações</th>
               </tr>
             </thead>
             <tbody id="payments-table-body">
-              <tr><td colspan="7" class="text-center py-4 placeholder-text">Carregando pagamentos...</td></tr>
+              <tr><td colspan="7" class="text-center py-4 text-muted">Carregando pagamentos...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </div>
+    <div class="text-muted small mt-2" id="payments-count">0 registros</div>
   </section>
 
   <!-- CONFIGURAÇÕES -->
   <section id="configuracoes" class="section-box">
-    <h3 class="mb-3">Configurações do Casamento</h3>
+    <h3 class="mb-3"><i class="bi bi-gear me-2"></i>Configurações do Casamento</h3>
     <div class="card">
       <div class="card-body">
         <form id="settings-form">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label fw-bold">Nome do Casal</label>
+              <label class="form-label fw-semibold">Nome do Casal</label>
               <input type="text" class="form-control" id="set-couple-name" required>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-bold">Data do Casamento</label>
+              <label class="form-label fw-semibold">Data do Casamento</label>
               <input type="date" class="form-control" id="set-wedding-date" required>
             </div>
             <div class="col-md-4">
-              <label class="form-label fw-bold">Número de Convidados</label>
+              <label class="form-label fw-semibold">Convidados</label>
               <input type="number" class="form-control" id="set-guest-count">
             </div>
             <div class="col-md-4">
-              <label class="form-label fw-bold">Orçamento Total (R$)</label>
+              <label class="form-label fw-semibold">Orçamento (R$)</label>
               <input type="number" step="0.01" class="form-control" id="set-budget-total">
             </div>
             <div class="col-md-4">
-              <label class="form-label fw-bold">Tema do Casamento</label>
+              <label class="form-label fw-semibold">Tema</label>
               <input type="text" class="form-control" id="set-theme">
             </div>
             <div class="col-12">
-              <label class="form-label fw-bold">Localização</label>
+              <label class="form-label fw-semibold">Localização</label>
               <input type="text" class="form-control" id="set-location">
             </div>
           </div>
-          <div class="mt-4">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Salvar Configurações</button>
+          <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Salvar</button>
+            <button type="button" class="btn btn-outline-secondary" onclick="loadData()"><i class="bi bi-arrow-clockwise me-1"></i> Recarregar</button>
           </div>
         </form>
       </div>
     </div>
   </section>
+
 </main>
 
-<!-- MODAL: SERVIÇO -->
+<!-- MODAL: DETALHES (genérico para serviços/fornecedores/pagamentos) -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="detailModalTitle">Detalhes</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-grid" id="detailContent"></div>
+        <hr class="my-3">
+        <div class="d-flex gap-2 justify-content-end">
+          <button class="btn btn-outline-primary btn-sm" id="detailEditBtn"><i class="bi bi-pencil me-1"></i>Editar</button>
+          <button class="btn btn-outline-danger btn-sm" id="detailDeleteBtn"><i class="bi bi-trash me-1"></i>Excluir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: SERVIÇO (mantido para compatibilidade) -->
 <div class="modal fade" id="serviceModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="serviceModalTitle">Adicionar Serviço</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form id="service-form">
         <input type="hidden" id="svc-id">
         <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">Nome do Serviço</label>
-            <input type="text" class="form-control" id="svc-name" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Categoria</label>
+          <div class="mb-3"><label class="form-label">Nome do Serviço</label><input type="text" class="form-control" id="svc-name" required></div>
+          <div class="mb-3"><label class="form-label">Categoria</label>
             <select class="form-select" id="svc-category" required>
-              <option value="">Selecione uma categoria</option>
-              <option value="vestuario">Vestuário</option>
-              <option value="beleza">Beleza e Maquiagem</option>
-              <option value="cerimonia">Cerimônia</option>
-              <option value="recepcao">Recepção</option>
-              <option value="hospedagem">Hospedagem</option>
-              <option value="transporte">Transporte</option>
-              <option value="lua-de-mel">Lua de Mel</option>
-              <option value="outros">Outros</option>
+              <option value="">Selecione...</option>
+              <option value="vestuario">Vestuário</option><option value="beleza">Beleza</option>
+              <option value="cerimonia">Cerimônia</option><option value="recepcao">Recepção</option>
+              <option value="hospedagem">Hospedagem</option><option value="transporte">Transporte</option>
+              <option value="lua-de-mel">Lua de Mel</option><option value="outros">Outros</option>
             </select>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Valor Total (R$)</label>
-            <input type="number" step="0.01" class="form-control" id="svc-value" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Data de Vencimento</label>
-            <input type="date" class="form-control" id="svc-due-date">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Observações</label>
-            <textarea class="form-control" id="svc-notes" rows="3"></textarea>
-          </div>
+          <div class="mb-3"><label class="form-label">Valor Total (R$)</label><input type="number" step="0.01" class="form-control" id="svc-value" required></div>
+          <div class="mb-3"><label class="form-label">Vencimento</label><input type="date" class="form-control" id="svc-due-date"></div>
+          <div class="mb-3"><label class="form-label">Observações</label><textarea class="form-control" id="svc-notes" rows="3"></textarea></div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-success">Salvar Serviço</button>
+          <button type="submit" class="btn btn-success">Salvar</button>
         </div>
       </form>
     </div>
@@ -347,65 +518,38 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="supplierModalTitle">Adicionar Fornecedor</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form id="supplier-form">
         <input type="hidden" id="sup-id">
         <div class="modal-body">
           <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">Categoria</label>
+            <div class="col-md-6"><label class="form-label">Categoria</label>
               <select class="form-select" id="sup-category" required>
-                <option value="">Selecione uma categoria</option>
-                <option value="fotografia">Fotógrafos</option>
-                <option value="buffet">Buffet e Doces</option>
-                <option value="decoracao">Decoração</option>
-                <option value="musica">Música e Som</option>
-                <option value="florista">Florista</option>
-                <option value="cerimonialista">Cerimonialista</option>
+                <option value="">Selecione...</option>
+                <option value="fotografia">Fotógrafos</option><option value="buffet">Buffet</option>
+                <option value="decoracao">Decoração</option><option value="musica">Música</option>
+                <option value="florista">Florista</option><option value="cerimonialista">Cerimonialista</option>
                 <option value="outros">Outros</option>
               </select>
             </div>
-            <div class="col-md-6">
-              <label class="form-label">Nome do Fornecedor</label>
-              <input type="text" class="form-control" id="sup-name" required>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Valor do Pacote (R$)</label>
-              <input type="number" step="0.01" class="form-control" id="sup-price" required>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Avaliação</label>
+            <div class="col-md-6"><label class="form-label">Nome</label><input type="text" class="form-control" id="sup-name" required></div>
+            <div class="col-md-4"><label class="form-label">Preço (R$)</label><input type="number" step="0.01" class="form-control" id="sup-price" required></div>
+            <div class="col-md-4"><label class="form-label">Avaliação</label>
               <select class="form-select" id="sup-rating">
-                <option value="0">Não avaliado</option>
-                <option value="1">⭐</option>
-                <option value="2">⭐⭐</option>
-                <option value="3">⭐⭐⭐</option>
-                <option value="4">⭐⭐⭐⭐</option>
-                <option value="5">⭐⭐⭐⭐⭐</option>
+                <option value="0">—</option><option value="1">⭐</option><option value="2">⭐⭐</option>
+                <option value="3">⭐⭐⭐</option><option value="4">⭐⭐⭐⭐</option><option value="5">⭐⭐⭐⭐⭐</option>
               </select>
             </div>
-            <div class="col-md-4">
-              <label class="form-label">Telefone</label>
-              <input type="text" class="form-control" id="sup-phone">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Email</label>
-              <input type="email" class="form-control" id="sup-email">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Descrição do Pacote</label>
-              <textarea class="form-control" id="sup-description" rows="2"></textarea>
-            </div>
-            <div class="col-12">
-              <label class="form-label">Observações</label>
-              <textarea class="form-control" id="sup-notes" rows="2"></textarea>
-            </div>
+            <div class="col-md-4"><label class="form-label">Telefone</label><input type="tel" class="form-control" id="sup-phone"></div>
+            <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" id="sup-email"></div>
+            <div class="col-md-6"><label class="form-label">Descrição</label><textarea class="form-control" id="sup-description" rows="2"></textarea></div>
+            <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="sup-notes" rows="2"></textarea></div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Salvar Fornecedor</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
         </div>
       </form>
     </div>
@@ -418,60 +562,60 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Registrar Pagamento</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form id="payment-form">
         <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">Tipo</label>
+          <div class="mb-3"><label class="form-label">Tipo</label>
             <select class="form-select" id="pay-type" required>
-              <option value="">Selecione o tipo</option>
-              <option value="service">Serviço</option>
-              <option value="supplier">Fornecedor</option>
+              <option value="">Selecione...</option>
+              <option value="service">Serviço</option><option value="supplier">Fornecedor</option>
             </select>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Item</label>
-            <select class="form-select" id="pay-item" required>
-              <option value="">Selecione um item</option>
-            </select>
+          <div class="mb-3"><label class="form-label">Item</label>
+            <select class="form-select" id="pay-item" required><option value="">Carregando...</option></select>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Valor (R$)</label>
-            <input type="number" step="0.01" class="form-control" id="pay-amount" required>
+          <div class="row g-3">
+            <div class="col-6"><label class="form-label">Valor (R$)</label><input type="number" step="0.01" class="form-control" id="pay-amount" required></div>
+            <div class="col-6"><label class="form-label">Data</label><input type="date" class="form-control" id="pay-date" required></div>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Data do Pagamento</label>
-            <input type="date" class="form-control" id="pay-date" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Método de Pagamento</label>
+          <div class="mb-3 mt-3"><label class="form-label">Método</label>
             <select class="form-select" id="pay-method" required>
-              <option value="cash">Dinheiro</option>
-              <option value="card">Cartão</option>
-              <option value="transfer">Transferência</option>
-              <option value="pix">PIX</option>
+              <option value="cash">Dinheiro</option><option value="card">Cartão</option>
+              <option value="transfer">Transferência</option><option value="pix">PIX</option>
             </select>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Nº do Comprovante</label>
-            <input type="text" class="form-control" id="pay-receipt">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Descrição</label>
-            <input type="text" class="form-control" id="pay-description">
+          <div class="row g-3">
+            <div class="col-6"><label class="form-label">Comprovante</label><input type="text" class="form-control" id="pay-receipt"></div>
+            <div class="col-6"><label class="form-label">Descrição</label><input type="text" class="form-control" id="pay-description"></div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-warning">Registrar Pagamento</button>
+          <button type="submit" class="btn btn-warning">Registrar</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- SCRIPTS - CAMINHOS CORRETOS PARA PASTA JS -->
+<!-- FLOATING ACTION BUTTONS -->
+<div class="fab-container">
+  <button class="fab fab-success" onclick="openModal('payment')" title="Novo Pagamento">
+    <i class="bi bi-currency-dollar"></i>
+    <span class="fab-label">Pagamento</span>
+  </button>
+  <button class="fab fab-secondary" onclick="openModal('supplier')" title="Novo Fornecedor">
+    <i class="bi bi-people"></i>
+    <span class="fab-label">Fornecedor</span>
+  </button>
+  <button class="fab" onclick="openModal('service')" title="Novo Serviço">
+    <i class="bi bi-plus-lg"></i>
+    <span class="fab-label">Serviço</span>
+  </button>
+</div>
+
+<!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
 <script src="js/config.js"></script>

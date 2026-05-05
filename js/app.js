@@ -567,20 +567,23 @@ function updatePaymentInfo() {
     }
   }
 
-  if (item && infoBox) {
-    infoBox.style.display = 'block';
-    
-    // Atualizar valores na caixa de informações
-    document.getElementById('info-total').textContent = formatCurrency(total);
-    document.getElementById('info-paid').textContent = formatCurrency(paid);
-    document.getElementById('info-remaining').textContent = formatCurrency(remaining);
-    
-    // ⚠️ IMPORTANTE: Armazenar valor numérico em data attribute
-    infoBox.dataset.remaining = remaining;
-    
-    // Atualizar barra de progresso
-    const pct = total > 0 ? (paid / total) * 100 : 0;
-    document.getElementById('info-progress').style.width = `${pct}%`;
+ if (item && infoBox) {
+  infoBox.style.display = 'block';
+  
+  // Atualizar valores na caixa de informações
+  document.getElementById('info-total').textContent = formatCurrency(total);
+  document.getElementById('info-paid').textContent = formatCurrency(paid);
+  document.getElementById('info-remaining').textContent = formatCurrency(remaining);
+  
+  // ✅ IMPORTANTE: Armazenar valor numérico REAL em data attribute
+  infoBox.dataset.remaining = remaining;
+  
+  // Atualizar barra de progresso
+  const pct = total > 0 ? (paid / total) * 100 : 0;
+  document.getElementById('info-progress').style.width = `${pct}%`;
+  
+  // ... resto do código ...
+}
     
     // Limitar valor máximo do pagamento
     if (amountInput) {

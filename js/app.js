@@ -840,12 +840,16 @@ async function registerPayment(e) {
 
   const [type, idStr] = rawItem.split('-');
   const id = parseInt(idStr);
-  const amount = parseFloat(document.getElementById('pay-amount').value);
-
-  // Validar valor contra o restante mostrado
-  const remainingText = document.getElementById('info-remaining')?.textContent || '0';
-  const remaining = parseFloat(remainingText.replace(/[^\d,.-]/g, '').replace(',', '.'));
   
+  // CORREÇÃO: Substitui vírgula por ponto para o JS entender o valor
+  const amountStr = document.getElementById('pay-amount').value.replace(',', '.');
+  const amount = parseFloat(amountStr);
+
+  // CORREÇÃO: Limpeza do restante para pegar o valor real (ex: 1000 em vez de 1)
+  const remainingText = document.getElementById('info-remaining').textContent;
+  const remaining = parseFloat(remainingText.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.'));
+  
+  // Validação
   if (amount > remaining) {
     showToast(`Valor excede o restante de ${formatCurrency(remaining)}`, 'danger');
     return;

@@ -12,16 +12,14 @@ const supabase = createClient(
 // Estado Global
 let appState = { services: [], suppliers: [], payments: [], settings: {} };
 
-// ==================== UTILITÁRIOS FINANCEIROS ====================
-
-// Formata moeda (R$ 1.234,56)
-const formatCurrency = (val) => 
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
-
-// Garante precisão de 2 casas decimais (Evita o erro de 49.9999)
+// ==================== FUNÇÃO DE PRECISÃO FINANCEIRA ====================
+// Esta função resolve o erro de 19,99 virando 20,00 (e vice-versa)
 function preciseRound(num) {
-  return Math.round(num * 100) / 100;
+  return Math.round((num + Number.EPSILON) * 100) / 100;
 }
+
+const formatCurrency = (val) => 
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preciseRound(val || 0));
 
 const formatDate = (dateStr) => 
   dateStr ? new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
@@ -93,7 +91,7 @@ function renderAll() {
 
 // ==================== RENDERIZAÇÃO ====================
 function renderDashboard() {
-  // Precisão total nos cálculos
+  // CÁLCULOS COM PRECISÃO MÁXIMA
   const totalServices = appState.services.reduce((sum, s) => preciseRound(sum + (parseFloat(s.value) || 0)), 0);
   const totalSuppliers = appState.suppliers.reduce((sum, s) => preciseRound(sum + (parseFloat(s.price) || 0)), 0);
   const totalBudget = preciseRound(parseFloat(appState.settings.budget_total || 0)) || preciseRound(totalServices + totalSuppliers);
@@ -365,7 +363,7 @@ function renderSettings() {
   setVal('wedding-location', appState.settings.location);
 }
 
-// ==================== MODAIS & LÓGICA DE PAGAMENTO PRECISA ====================
+// ==================== MODAIS & LÓGICA DE PAGAMENTO ====================
 function openModal(type, id = null) {
   let modalId, titleId;
   if (type === 'service') { modalId = 'serviceModal'; titleId = 'serviceModalTitle'; }
@@ -663,7 +661,8 @@ async function registerPayment(e) {
   
   const amountInput = document.getElementById('pay-amount');
   const amountStr = (amountInput?.value || '').replace(',', '.');
-  // Arredonda para 2 casas para garantir 50.00 e não 49.99999
+  
+  // AQUI ESTÁ A CORREÇÃO: Usando preciseRound no valor digitado
   const amount = preciseRound(parseFloat(amountStr));
 
   const infoBox = document.getElementById('payment-info-box');

@@ -1,7 +1,6 @@
 /**
  * CRM Casamento Perfeito - Core Logic
- * Conecta ao Supabase e gerencia toda a aplicação
- * Compatível com index.html profissional
+ * Versão completa e corrigida - Conecta ao Supabase
  */
 
 // ==================== INICIALIZAÇÃO ====================
@@ -52,19 +51,16 @@ function showToast(message, type = 'success') {
 
 // ==================== NAVEGAÇÃO ====================
 function showSection(sectionId) {
-  // Esconder todas as seções
-  document.querySelectorAll('.section-box').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.section-box, .tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-link, .nav-tab').forEach(el => el.classList.remove('active'));
   
-  // Mostrar seção alvo
   const target = document.getElementById(sectionId);
   if (target) {
     target.classList.add('active');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   
-  // Atualizar navegação
-  const navLink = document.querySelector(`[data-section="${sectionId}"]`);
+  const navLink = document.querySelector(`[data-section="${sectionId}"], [data-tab="${sectionId}"]`);
   if (navLink) navLink.classList.add('active');
 }
 
@@ -80,11 +76,10 @@ async function loadData() {
       supabase.from('wedding_settings').select('*').limit(1).single()
     ]);
 
-    if (resSvc.error) throw new Error('Serviços: ' + resSvc.error.message);
-    if (resSup.error) throw new Error('Fornecedores: ' + resSup.error.message);
-    if (resPay.error) throw new Error('Pagamentos: ' + resPay.error.message);
+    if (resSvc.error && resSvc.error.code !== 'PGRST116') throw new Error('Serviços: ' + resSvc.error.message);
+    if (resSup.error && resSup.error.code !== 'PGRST116') throw new Error('Fornecedores: ' + resSup.error.message);
+    if (resPay.error && resPay.error.code !== 'PGRST116') throw new Error('Pagamentos: ' + resPay.error.message);
 
-    // Atualizar estado global
     appState.services = resSvc.data || [];
     appState.suppliers = resSup.data || [];
     appState.payments = resPay.data || [];
@@ -96,7 +91,6 @@ async function loadData() {
       pagamentos: appState.payments.length
     });
 
-    // Renderizar tudo
     renderDashboard();
     renderServices();
     renderSuppliers();
@@ -106,13 +100,12 @@ async function loadData() {
 
   } catch (error) {
     console.error('❌ Erro ao carregar:', error);
-    showToast('Erro ao conectar com banco de dados', 'danger');
+    showToast('Erro ao conectar com banco de dados: ' + error.message, 'danger');
   }
 }
 
 // ==================== RENDERIZAÇÃO ====================
 function renderDashboard() {
-  // Cálculos financeiros
   const totalServices = appState.services.reduce((sum, s) => sum + parseFloat(s.value || 0), 0);
   const totalSuppliers = appState.suppliers.reduce((sum, s) => sum + parseFloat(s.price || 0), 0);
   const totalBudget = parseFloat(appState.settings.budget_total || 0) || (totalServices + totalSuppliers);
@@ -122,20 +115,27 @@ function renderDashboard() {
   
   const pending = Math.max(totalBudget - totalPaid, 0);
 
-  // Atualizar cards do dashboard
-  document.getElementById('dash-budget-total').textContent = formatCurrency(totalBudget);
-  document.getElementById('dash-paid-total').textContent = formatCurrency(totalPaid);
-  document.getElementById('dash-pending-total').textContent = formatCurrency(pending);
-  document.getElementById('dash-days-left').textContent = getDaysLeft(appState.settings.wedding_date);
+  // Atualizar elementos do dashboard (suporta múltiplos IDs)
+  const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  
+  setEl('dash-budget-total', formatCurrency(totalBudget));
+  setEl('total-budget', formatCurrency(totalBudget));
+  setEl('dash-paid-total', formatCurrency(totalPaid));
+  setEl('total-paid', formatCurrency(totalPaid));
+  setEl('dash-pending-total', formatCurrency(pending));
+  setEl('total-pending', formatCurrency(pending));
+  setEl('dash-days-left', getDaysLeft(appState.settings.wedding_date));
+  setEl('days-until-wedding', getDaysLeft(appState.settings.wedding_date));
   
   if (appState.settings.wedding_date) {
-    document.getElementById('wedding-date-display').textContent = `Até ${formatDate(appState.settings.wedding_date)}`;
+    const dateEl = document.getElementById('wedding-date-display');
+    if (dateEl) dateEl.textContent = `Até ${formatDate(appState.settings.wedding_date)}`;
   }
 
   // Último pagamento
   const lastPayment = appState.payments[0];
   if (lastPayment) {
-    document.getElementById('last-payment-amount').textContent = formatCurrency(lastPayment.amount);
+    setEl('last-payment-amount', formatCurrency(lastPayment.amount));
     
     let entityName = 'Pagamento';
     if (lastPayment.entity_type === 'service') {
@@ -146,13 +146,10 @@ function renderDashboard() {
       if (sup) entityName = sup.name;
     }
     
-    document.getElementById('last-payment-meta').innerHTML = `
-      <i class="bi bi-check-circle-fill me-1"></i> 
-      ${lastPayment.description || entityName} • ${formatDate(lastPayment.payment_date)}
-    `;
-  } else {
-    document.getElementById('last-payment-amount').textContent = 'R$ 0,00';
-    document.getElementById('last-payment-meta').textContent = 'Nenhum pagamento registrado';
+    const metaEl = document.getElementById('last-payment-meta');
+    if (metaEl) {
+      metaEl.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> ${lastPayment.description || entityName} • ${formatDate(lastPayment.payment_date)}`;
+    }
   }
 
   // Próximos vencimentos
@@ -162,67 +159,63 @@ function renderDashboard() {
     .slice(0, 5);
 
   const upList = document.getElementById('dash-upcoming');
-  if (upcoming.length === 0) {
-    upList.innerHTML = '<li class="list-group-item text-center text-muted py-3">Nenhum vencimento próximo</li>';
-  } else {
-    upList.innerHTML = upcoming.map(s => {
-      const remaining = parseFloat(s.value || 0) - parseFloat(s.paid || 0);
-      return `
-        <li class="list-group-item d-flex justify-content-between align-items-center cursor-pointer" onclick="showSection('servicos')">
-          <div>
-            <strong>${s.name}</strong><br>
-            <small class="text-muted">${formatDate(s.due_date)}</small>
-          </div>
+  if (upList) {
+    if (upcoming.length === 0) {
+      upList.innerHTML = '<li class="list-group-item text-center text-muted py-3">Nenhum vencimento próximo</li>';
+    } else {
+      upList.innerHTML = upcoming.map(s => {
+        const remaining = parseFloat(s.value || 0) - parseFloat(s.paid || 0);
+        return `<li class="list-group-item d-flex justify-content-between align-items-center cursor-pointer" onclick="showSection('servicos')">
+          <div><strong>${s.name}</strong><br><small class="text-muted">${formatDate(s.due_date)}</small></div>
           <span class="badge bg-danger">${formatCurrency(remaining)}</span>
-        </li>
-      `;
-    }).join('');
+        </li>`;
+      }).join('');
+    }
   }
 
   // Atividade recente
   const recent = appState.payments.slice(0, 5);
   const actList = document.getElementById('dash-activity');
-  if (recent.length === 0) {
-    actList.innerHTML = '<li class="list-group-item text-center text-muted py-3">Nenhuma atividade recente</li>';
-  } else {
-    actList.innerHTML = recent.map(p => {
-      let entityName = 'Item';
-      if (p.entity_type === 'service') {
-        const svc = appState.services.find(s => s.id === p.entity_id);
-        if (svc) entityName = svc.name;
-      } else {
-        const sup = appState.suppliers.find(s => s.id === p.entity_id);
-        if (sup) entityName = sup.name;
-      }
-      
-      return `
-        <li class="list-group-item d-flex justify-content-between align-items-center cursor-pointer" onclick="showSection('pagamentos')">
-          <div>
-            <strong>${p.description || entityName}</strong><br>
-            <small class="text-muted">${formatDate(p.payment_date)} • ${(p.payment_method || '').toUpperCase()}</small>
-          </div>
+  if (actList) {
+    if (recent.length === 0) {
+      actList.innerHTML = '<li class="list-group-item text-center text-muted py-3">Nenhuma atividade recente</li>';
+    } else {
+      actList.innerHTML = recent.map(p => {
+        let entityName = 'Item';
+        if (p.entity_type === 'service') {
+          const svc = appState.services.find(s => s.id === p.entity_id);
+          if (svc) entityName = svc.name;
+        } else {
+          const sup = appState.suppliers.find(s => s.id === p.entity_id);
+          if (sup) entityName = sup.name;
+        }
+        return `<li class="list-group-item d-flex justify-content-between align-items-center cursor-pointer" onclick="showSection('pagamentos')">
+          <div><strong>${p.description || entityName}</strong><br><small class="text-muted">${formatDate(p.payment_date)}</small></div>
           <span class="badge bg-success">${formatCurrency(p.amount)}</span>
-        </li>
-      `;
-    }).join('');
+        </li>`;
+      }).join('');
+    }
   }
 
-  // Progresso do orçamento
+  // Progresso
   const progress = totalBudget > 0 ? (totalPaid / totalBudget) * 100 : 0;
-  document.getElementById('dash-progress').innerHTML = `
-    <div class="progress mb-2" style="height: 10px;">
-      <div class="progress-bar bg-success" style="width: ${progress}%"></div>
-    </div>
-    <small class="text-muted">${formatCurrency(totalPaid)} de ${formatCurrency(totalBudget)} (${progress.toFixed(0)}%)</small>
-  `;
+  const progEl = document.getElementById('dash-progress');
+  if (progEl) {
+    progEl.innerHTML = `
+      <div class="progress mb-2" style="height: 10px;">
+        <div class="progress-bar bg-success" style="width: ${progress}%"></div>
+      </div>
+      <small class="text-muted">${formatCurrency(totalPaid)} de ${formatCurrency(totalBudget)} (${progress.toFixed(0)}%)</small>
+    `;
+  }
 }
 
 function renderServices() {
   const tbody = document.getElementById('services-table-body');
+  if (!tbody) return;
   
   if (appState.services.length === 0) {
     tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">Nenhum serviço cadastrado</td></tr>';
-    document.getElementById('services-count').textContent = '0 registros';
     return;
   }
 
@@ -232,15 +225,9 @@ function renderServices() {
     const remaining = value - paid;
     const percent = value > 0 ? (paid / value) * 100 : 0;
     
-    let statusClass = 'badge-pending';
-    let statusText = 'Pendente';
-    if (remaining <= 0) {
-      statusClass = 'badge-paid';
-      statusText = 'Pago';
-    } else if (paid > 0) {
-      statusClass = 'badge-partial';
-      statusText = 'Parcial';
-    }
+    let statusClass = 'badge-pending', statusText = 'Pendente';
+    if (remaining <= 0) { statusClass = 'badge-paid'; statusText = 'Pago'; }
+    else if (paid > 0) { statusClass = 'badge-partial'; statusText = 'Parcial'; }
 
     const progressClass = percent === 100 ? 'progress-paid' : percent > 0 ? 'progress-partial' : 'progress-pending';
 
@@ -260,29 +247,21 @@ function renderServices() {
         <td>${formatDate(s.due_date)}</td>
         <td><span class="badge ${statusClass}">${statusText}</span></td>
         <td class="text-end" onclick="event.stopPropagation()">
-          <button class="btn btn-sm btn-success me-1" onclick="openPaymentForService(${s.id})" title="Pagar">
-            <i class="bi bi-currency-dollar"></i>
-          </button>
-          <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); editService(${s.id})" title="Editar">
-            <i class="bi bi-pencil"></i>
-          </button>
-          <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteService(${s.id})" title="Excluir">
-            <i class="bi bi-trash"></i>
-          </button>
+          <button class="btn btn-sm btn-success me-1" onclick="openPaymentForService(${s.id})" title="Pagar"><i class="bi bi-currency-dollar"></i></button>
+          <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); editService(${s.id})" title="Editar"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteService(${s.id})" title="Excluir"><i class="bi bi-trash"></i></button>
         </td>
       </tr>
     `;
   }).join('');
-  
-  document.getElementById('services-count').textContent = `${appState.services.length} registros`;
 }
 
 function renderSuppliers() {
   const container = document.getElementById('suppliers-container');
+  if (!container) return;
   
   if (appState.suppliers.length === 0) {
     container.innerHTML = '<div class="col-12 text-center text-muted py-5"><i class="bi bi-hourglass-split fs-1 d-block mb-2"></i>Nenhum fornecedor cadastrado</div>';
-    document.getElementById('suppliers-count').textContent = '0 registros';
     return;
   }
 
@@ -298,12 +277,8 @@ function renderSuppliers() {
             <div class="d-flex justify-content-between align-items-start mb-2">
               <h5 class="card-title mb-0">${s.name}</h5>
               <div class="btn-group">
-                <button class="btn btn-sm btn-light" onclick="event.stopPropagation(); editSupplier(${s.id})">
-                  <i class="bi bi-pencil"></i>
-                </button>
-                <button class="btn btn-sm btn-light text-danger" onclick="event.stopPropagation(); deleteSupplier(${s.id})">
-                  <i class="bi bi-trash"></i>
-                </button>
+                <button class="btn btn-sm btn-light" onclick="event.stopPropagation(); editSupplier(${s.id})"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-light text-danger" onclick="event.stopPropagation(); deleteSupplier(${s.id})"><i class="bi bi-trash"></i></button>
               </div>
             </div>
             <p class="text-muted mb-1">${s.category}</p>
@@ -312,25 +287,20 @@ function renderSuppliers() {
               <small>Pago: <strong class="text-success">${formatCurrency(paid)}</strong></small>
               ${s.rating ? `<small>${'⭐'.repeat(parseInt(s.rating) || 0)}</small>` : ''}
             </div>
-            ${remaining > 0 
-              ? `<small class="text-danger">Restante: ${formatCurrency(remaining)}</small>` 
-              : '<small class="text-success"><i class="bi bi-check-circle me-1"></i>Quitado</small>'
-            }
+            ${remaining > 0 ? `<small class="text-danger">Restante: ${formatCurrency(remaining)}</small>` : '<small class="text-success"><i class="bi bi-check-circle me-1"></i>Quitado</small>'}
           </div>
         </div>
       </div>
     `;
   }).join('');
-
-  document.getElementById('suppliers-count').textContent = `${appState.suppliers.length} registros`;
 }
 
 function renderPayments() {
   const tbody = document.getElementById('payments-table-body');
+  if (!tbody) return;
   
   if (appState.payments.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Nenhum pagamento registrado</td></tr>';
-    document.getElementById('payments-count').textContent = '0 registros';
     return;
   }
 
@@ -347,56 +317,38 @@ function renderPayments() {
     return `
       <tr onclick="showPaymentDetail(${p.id})" style="cursor: pointer;">
         <td>${formatDate(p.payment_date)}</td>
-        <td>
-          <strong>${p.description || entityName}</strong><br>
-          <small class="text-muted">${entityName}</small>
-        </td>
+        <td><strong>${p.description || entityName}</strong><br><small class="text-muted">${entityName}</small></td>
         <td class="text-end fw-bold text-success">${formatCurrency(p.amount)}</td>
         <td><span class="badge bg-secondary">${(p.payment_method || '').toUpperCase()}</span></td>
         <td><span class="badge bg-success">${p.status}</span></td>
         <td>${p.receipt_number || '—'}</td>
         <td class="text-end" onclick="event.stopPropagation()">
-          <button class="btn btn-sm btn-outline-danger" onclick="deletePayment(${p.id})">
-            <i class="bi bi-trash"></i>
-          </button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deletePayment(${p.id})"><i class="bi bi-trash"></i></button>
         </td>
       </tr>
     `;
   }).join('');
-
-  document.getElementById('payments-count').textContent = `${appState.payments.length} registros`;
 }
 
 function renderBudget() {
-  // Resumo financeiro
   const totalBudget = parseFloat(appState.settings.budget_total || 0);
   const totalSpent = appState.services.reduce((s, v) => s + parseFloat(v.value || 0), 0) + 
                      appState.suppliers.reduce((s, v) => s + parseFloat(v.price || 0), 0);
   const totalPaid = appState.services.reduce((s, v) => s + parseFloat(v.paid || 0), 0) +
                     appState.suppliers.reduce((s, v) => s + parseFloat(v.paid || 0), 0);
 
-  document.getElementById('budget-summary').innerHTML = `
-    <ul class="list-group list-group-flush">
-      <li class="list-group-item d-flex justify-content-between">
-        <span>Orçamento Definido</span>
-        <strong>${formatCurrency(totalBudget || totalSpent)}</strong>
-      </li>
-      <li class="list-group-item d-flex justify-content-between">
-        <span>Total Estimado</span>
-        <span>${formatCurrency(totalSpent)}</span>
-      </li>
-      <li class="list-group-item d-flex justify-content-between text-success">
-        <span>Total Pago</span>
-        <strong>${formatCurrency(totalPaid)}</strong>
-      </li>
-      <li class="list-group-item d-flex justify-content-between text-danger">
-        <span>Restante</span>
-        <strong>${formatCurrency(totalSpent - totalPaid)}</strong>
-      </li>
-    </ul>
-  `;
+  const summaryEl = document.getElementById('budget-summary');
+  if (summaryEl) {
+    summaryEl.innerHTML = `
+      <ul class="list-group list-group-flush">
+        <li class="list-group-item d-flex justify-content-between"><span>Orçamento Definido</span><strong>${formatCurrency(totalBudget || totalSpent)}</strong></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Total Estimado</span><span>${formatCurrency(totalSpent)}</span></li>
+        <li class="list-group-item d-flex justify-content-between text-success"><span>Total Pago</span><strong>${formatCurrency(totalPaid)}</strong></li>
+        <li class="list-group-item d-flex justify-content-between text-danger"><span>Restante</span><strong>${formatCurrency(totalSpent - totalPaid)}</strong></li>
+      </ul>
+    `;
+  }
 
-  // Por categoria
   const categories = {};
   appState.services.forEach(s => {
     if (!categories[s.category]) categories[s.category] = { total: 0, paid: 0 };
@@ -404,74 +356,45 @@ function renderBudget() {
     categories[s.category].paid += parseFloat(s.paid || 0);
   });
 
-  document.getElementById('budget-categories').innerHTML = Object.keys(categories).map(cat => {
-    const info = categories[cat];
-    const pct = info.total > 0 ? (info.paid / info.total) * 100 : 0;
-    return `
-      <div class="mb-3">
-        <div class="d-flex justify-content-between mb-1">
-          <span class="fw-bold text-capitalize">${cat}</span>
-          <span>${formatCurrency(info.paid)} / ${formatCurrency(info.total)}</span>
-        </div>
-        <div class="progress" style="height: 6px;">
-          <div class="progress-bar bg-primary" style="width: ${pct}%"></div>
-        </div>
-      </div>
-    `;
-  }).join('') || '<p class="text-muted text-center">Sem categorias</p>';
-
-  // Todas as entradas
-  const allEntries = [
-    ...appState.services.map(s => ({...s, type: 'Serviço'})),
-    ...appState.suppliers.map(s => ({...s, type: 'Fornecedor', value: s.price}))
-  ];
-
-  document.getElementById('all-entries-body').innerHTML = allEntries.map(item => {
-    const val = parseFloat(item.value || 0);
-    const paid = parseFloat(item.paid || 0);
-    const rem = val - paid;
-    return `
-      <tr>
-        <td><span class="badge bg-secondary">${item.type}</span></td>
-        <td>${item.name}</td>
-        <td>${item.category}</td>
-        <td class="text-end">${formatCurrency(val)}</td>
-        <td class="text-end text-success">${formatCurrency(paid)}</td>
-        <td><span class="badge ${rem <= 0 ? 'bg-success' : 'bg-warning text-dark'}">${rem <= 0 ? 'Pago' : 'Pendente'}</span></td>
-      </tr>
-    `;
-  }).join('');
+  const catsEl = document.getElementById('budget-categories');
+  if (catsEl) {
+    catsEl.innerHTML = Object.keys(categories).map(cat => {
+      const info = categories[cat];
+      const pct = info.total > 0 ? (info.paid / info.total) * 100 : 0;
+      return `<div class="mb-3">
+        <div class="d-flex justify-content-between mb-1"><span class="fw-bold text-capitalize">${cat}</span><span>${formatCurrency(info.paid)} / ${formatCurrency(info.total)}</span></div>
+        <div class="progress" style="height: 6px;"><div class="progress-bar bg-primary" style="width: ${pct}%"></div></div>
+      </div>`;
+    }).join('') || '<p class="text-muted text-center">Sem categorias</p>';
+  }
 }
 
 function renderSettings() {
-  document.getElementById('set-couple-name').value = appState.settings.couple_name || '';
-  document.getElementById('set-wedding-date').value = appState.settings.wedding_date || '';
-  document.getElementById('set-guest-count').value = appState.settings.guest_count || '';
-  document.getElementById('set-budget-total').value = appState.settings.budget_total || '';
-  document.getElementById('set-theme').value = appState.settings.theme || '';
-  document.getElementById('set-location').value = appState.settings.location || '';
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  setVal('set-couple-name', appState.settings.couple_name);
+  setVal('couple-name', appState.settings.couple_name);
+  setVal('set-wedding-date', appState.settings.wedding_date);
+  setVal('wedding-date', appState.settings.wedding_date);
+  setVal('set-guest-count', appState.settings.guest_count);
+  setVal('guest-count', appState.settings.guest_count);
+  setVal('set-budget-total', appState.settings.budget_total);
+  setVal('budget-total', appState.settings.budget_total);
+  setVal('set-theme', appState.settings.theme);
+  setVal('wedding-theme', appState.settings.theme);
+  setVal('set-location', appState.settings.location);
+  setVal('wedding-location', appState.settings.location);
 }
 
 // ==================== MODAIS ====================
 function openModal(type, id = null) {
   let modalId, titleId;
-  
-  if (type === 'service') {
-    modalId = 'serviceModal';
-    titleId = 'serviceModalTitle';
-  } else if (type === 'supplier') {
-    modalId = 'supplierModal';
-    titleId = 'supplierModalTitle';
-  } else if (type === 'payment') {
-    modalId = 'paymentModal';
-  }
+  if (type === 'service') { modalId = 'serviceModal'; titleId = 'serviceModalTitle'; }
+  else if (type === 'supplier') { modalId = 'supplierModal'; titleId = 'supplierModalTitle'; }
+  else if (type === 'payment') { modalId = 'paymentModal'; }
 
   if (titleId) {
     const titleEl = document.getElementById(titleId);
-    if (titleEl) {
-      titleEl.textContent = id ? `Editar ${type === 'service' ? 'Serviço' : 'Fornecedor'}` : 
-                                     `Adicionar ${type === 'service' ? 'Serviço' : 'Fornecedor'}`;
-    }
+    if (titleEl) titleEl.textContent = id ? `Editar ${type === 'service' ? 'Serviço' : 'Fornecedor'}` : `Adicionar ${type === 'service' ? 'Serviço' : 'Fornecedor'}`;
   }
 
   const modal = new bootstrap.Modal(document.getElementById(modalId));
@@ -485,28 +408,24 @@ function closeModal(modalId) {
   const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
   if (modal) {
     modal.hide();
-    // Resetar formulários
     const form = document.getElementById(modalId.replace('Modal', '-form'));
     if (form) form.reset();
   }
 }
 
-// ==================== PAGAMENTO PARCIAL COM INFO DINÂMICA ====================
+// ==================== PAGAMENTO PARCIAL ====================
 function populatePaymentSelects() {
-  const type = document.getElementById('pay-type').value;
+  const type = document.getElementById('pay-type')?.value;
   const select = document.getElementById('pay-item');
   const infoBox = document.getElementById('payment-info-box');
   
+  if (!select) return;
   select.innerHTML = '<option value="">Selecione um item</option>';
   
-  if (!type) {
-    if (infoBox) infoBox.style.display = 'none';
-    return;
-  }
+  if (!type) { if (infoBox) infoBox.style.display = 'none'; return; }
 
   let items = [];
   if (type === 'service') {
-    // Mostrar apenas itens com saldo pendente
     items = appState.services.filter(s => (parseFloat(s.value || 0) - parseFloat(s.paid || 0)) > 0);
     items.forEach(item => {
       const remaining = parseFloat(item.value || 0) - parseFloat(item.paid || 0);
@@ -520,11 +439,7 @@ function populatePaymentSelects() {
     });
   }
 
-  if (items.length === 0) {
-    select.innerHTML = '<option value="">Nenhum item pendente</option>';
-  }
-
-  // Adicionar listener para atualizar informações quando selecionar
+  if (items.length === 0) select.innerHTML = '<option value="">Nenhum item pendente</option>';
   select.onchange = updatePaymentInfo;
 }
 
@@ -536,89 +451,63 @@ function updatePaymentInfo() {
   
   if (!select || !select.value || select.value.includes('Nenhum')) {
     if (infoBox) infoBox.style.display = 'none';
-    if (amountInput) {
-      amountInput.disabled = true;
-      amountHint.textContent = '';
-    }
+    if (amountInput) { amountInput.disabled = true; if (amountHint) amountHint.textContent = ''; }
     return;
   }
 
   const [type, idStr] = select.value.split('-');
   const id = parseInt(idStr);
   
-  let item = null;
-  let total = 0;
-  let paid = 0;
-  let remaining = 0;
+  let item = null, total = 0, paid = 0, remaining = 0;
 
   if (type === 'service') {
     item = appState.services.find(s => s.id === id);
-    if (item) {
-      total = parseFloat(item.value || 0);
-      paid = parseFloat(item.paid || 0);
-      remaining = total - paid;
-    }
+    if (item) { total = parseFloat(item.value || 0); paid = parseFloat(item.paid || 0); remaining = total - paid; }
   } else if (type === 'supplier') {
     item = appState.suppliers.find(s => s.id === id);
-    if (item) {
-      total = parseFloat(item.price || 0);
-      paid = parseFloat(item.paid || 0);
-      remaining = total - paid;
-    }
+    if (item) { total = parseFloat(item.price || 0); paid = parseFloat(item.paid || 0); remaining = total - paid; }
   }
 
- if (item && infoBox) {
-  infoBox.style.display = 'block';
-  
-  // Atualizar valores na caixa de informações
-  document.getElementById('info-total').textContent = formatCurrency(total);
-  document.getElementById('info-paid').textContent = formatCurrency(paid);
-  document.getElementById('info-remaining').textContent = formatCurrency(remaining);
-  
-  // ✅ IMPORTANTE: Armazenar valor numérico REAL em data attribute
-  infoBox.dataset.remaining = remaining;
-  
-  // Atualizar barra de progresso
-  const pct = total > 0 ? (paid / total) * 100 : 0;
-  document.getElementById('info-progress').style.width = `${pct}%`;
-  
-  // ... resto do código ...
-}
+  if (item && infoBox) {
+    infoBox.style.display = 'block';
     
-    // Limitar valor máximo do pagamento
+    const setInfo = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = formatCurrency(val); };
+    setInfo('info-total', total);
+    setInfo('info-paid', paid);
+    setInfo('info-remaining', remaining);
+    
+    // ✅ IMPORTANTE: Armazenar valor numérico REAL
+    infoBox.dataset.remaining = remaining;
+    
+    const pct = total > 0 ? (paid / total) * 100 : 0;
+    const progBar = document.getElementById('info-progress');
+    if (progBar) progBar.style.width = `${pct}%`;
+    
     if (amountInput) {
       amountInput.max = remaining;
       amountInput.placeholder = `Máx: ${formatCurrency(remaining)}`;
-      amountHint.textContent = `Máximo permitido: ${formatCurrency(remaining)}`;
-      
-      // Desabilitar se já estiver quitado
-      if (remaining <= 0) {
-        amountInput.disabled = true;
-        amountHint.textContent = 'Item já está quitado';
-      } else {
-        amountInput.disabled = false;
-      }
+      if (amountHint) amountHint.textContent = `Máximo permitido: ${formatCurrency(remaining)}`;
+      if (remaining <= 0) { amountInput.disabled = true; if (amountHint) amountHint.textContent = 'Item já está quitado'; }
+      else { amountInput.disabled = false; }
     }
   }
 }
 
-// Abrir modal de pagamento já com serviço selecionado
 function openPaymentForService(serviceId) {
   openModal('payment');
-  
-  // Aguardar modal abrir e selects popularem
   setTimeout(() => {
-    document.getElementById('pay-type').value = 'service';
-    populatePaymentSelects();
-    
-    setTimeout(() => {
-      const select = document.getElementById('pay-item');
-      const option = select.querySelector(`option[value="service-${serviceId}"]`);
-      if (option) {
-        select.value = `service-${serviceId}`;
-        updatePaymentInfo();
-      }
-    }, 100);
+    const typeSelect = document.getElementById('pay-type');
+    if (typeSelect) {
+      typeSelect.value = 'service';
+      populatePaymentSelects();
+      setTimeout(() => {
+        const select = document.getElementById('pay-item');
+        if (select) {
+          const option = select.querySelector(`option[value="service-${serviceId}"]`);
+          if (option) { select.value = `service-${serviceId}`; updatePaymentInfo(); }
+        }
+      }, 100);
+    }
   }, 300);
 }
 
@@ -626,78 +515,83 @@ function fillForm(type, id) {
   if (type === 'service') {
     const item = appState.services.find(s => s.id == id);
     if (item) {
-      document.getElementById('svc-id').value = item.id;
-      document.getElementById('svc-name').value = item.name;
-      document.getElementById('svc-category').value = item.category;
-      document.getElementById('svc-value').value = item.value;
-      document.getElementById('svc-due-date').value = item.due_date || '';
-      document.getElementById('svc-notes').value = item.notes || '';
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+      set('svc-id', item.id); set('service-id', item.id);
+      set('svc-name', item.name); set('service-name', item.name);
+      set('svc-category', item.category); set('service-category', item.category);
+      set('svc-value', item.value); set('service-value', item.value);
+      set('svc-due-date', item.due_date); set('service-due-date', item.due_date);
+      set('svc-notes', item.notes); set('service-notes', item.notes);
     }
   } else if (type === 'supplier') {
     const item = appState.suppliers.find(s => s.id == id);
     if (item) {
-      document.getElementById('sup-id').value = item.id;
-      document.getElementById('sup-name').value = item.name;
-      document.getElementById('sup-category').value = item.category;
-      document.getElementById('sup-price').value = item.price;
-      document.getElementById('sup-rating').value = item.rating || 0;
-      document.getElementById('sup-phone').value = item.contact_phone || '';
-      document.getElementById('sup-email').value = item.contact_email || '';
-      document.getElementById('sup-description').value = item.description || '';
-      document.getElementById('sup-notes').value = item.notes || '';
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+      set('sup-id', item.id); set('supplier-id', item.id);
+      set('sup-name', item.name); set('supplier-name', item.name);
+      set('sup-category', item.category); set('supplier-category', item.category);
+      set('sup-price', item.price); set('supplier-price', item.price);
+      set('sup-rating', item.rating || 0); set('supplier-rating', item.rating || 0);
+      set('sup-phone', item.contact_phone); set('supplier-phone', item.contact_phone);
+      set('sup-email', item.contact_email); set('supplier-email', item.contact_email);
+      set('sup-description', item.description); set('supplier-description', item.description);
+      set('sup-notes', item.notes); set('supplier-notes', item.notes);
     }
   }
 }
 
-// ==================== DETALHES (Modal Genérico) ====================
+// ==================== DETALHES ====================
 function showServiceDetail(id) {
   const s = appState.services.find(x => x.id === id);
   if (!s) return;
 
-  document.getElementById('detailModalTitle').textContent = s.name;
-  document.getElementById('detailContent').innerHTML = `
-    <span class="detail-label">Categoria:</span><span class="detail-value">${s.category}</span>
-    <span class="detail-label">Valor Total:</span><span class="detail-value text-primary">${formatCurrency(s.value)}</span>
-    <span class="detail-label">Total Pago:</span><span class="detail-value text-success">${formatCurrency(s.paid)}</span>
-    <span class="detail-label">Restante:</span><span class="detail-value text-danger fw-bold">${formatCurrency(s.value - s.paid)}</span>
-    <span class="detail-label">Vencimento:</span><span class="detail-value">${formatDate(s.due_date)}</span>
-    <span class="detail-label">Observações:</span><span class="detail-value">${s.notes || '—'}</span>
-  `;
+  const title = document.getElementById('detailModalTitle');
+  if (title) title.textContent = s.name;
   
-  document.getElementById('detailEditBtn').onclick = () => {
-    closeModal('detailModal');
-    editService(id);
-  };
-  document.getElementById('detailDeleteBtn').onclick = () => {
-    if (confirm('Excluir este serviço?')) deleteService(id);
-    closeModal('detailModal');
-  };
+  const content = document.getElementById('detailContent');
+  if (content) {
+    content.innerHTML = `
+      <span class="detail-label">Categoria:</span><span class="detail-value">${s.category}</span>
+      <span class="detail-label">Valor Total:</span><span class="detail-value text-primary">${formatCurrency(s.value)}</span>
+      <span class="detail-label">Total Pago:</span><span class="detail-value text-success">${formatCurrency(s.paid)}</span>
+      <span class="detail-label">Restante:</span><span class="detail-value text-danger fw-bold">${formatCurrency(s.value - s.paid)}</span>
+      <span class="detail-label">Vencimento:</span><span class="detail-value">${formatDate(s.due_date)}</span>
+      <span class="detail-label">Observações:</span><span class="detail-value">${s.notes || '—'}</span>
+    `;
+  }
+  
+  const editBtn = document.getElementById('detailEditBtn');
+  const delBtn = document.getElementById('detailDeleteBtn');
+  if (editBtn) editBtn.onclick = () => { closeModal('detailModal'); editService(id); };
+  if (delBtn) delBtn.onclick = () => { if (confirm('Excluir este serviço?')) deleteService(id); closeModal('detailModal'); };
 
-  new bootstrap.Modal(document.getElementById('detailModal')).show();
+  const modal = new bootstrap.Modal(document.getElementById('detailModal'));
+  modal.show();
 }
 
 function showSupplierDetail(id) {
   const s = appState.suppliers.find(x => x.id === id);
   if (!s) return;
 
-  document.getElementById('detailModalTitle').textContent = s.name;
-  document.getElementById('detailContent').innerHTML = `
-    <span class="detail-label">Categoria:</span><span class="detail-value">${s.category}</span>
-    <span class="detail-label">Preço:</span><span class="detail-value text-primary">${formatCurrency(s.price)}</span>
-    <span class="detail-label">Pago:</span><span class="detail-value text-success">${formatCurrency(s.paid)}</span>
-    <span class="detail-label">Telefone:</span><span class="detail-value">${s.contact_phone || '—'}</span>
-    <span class="detail-label">Email:</span><span class="detail-value">${s.contact_email || '—'}</span>
-    <span class="detail-label">Descrição:</span><span class="detail-value">${s.description || '—'}</span>
-  `;
-
-  document.getElementById('detailEditBtn').onclick = () => {
-    closeModal('detailModal');
-    editSupplier(id);
-  };
-  document.getElementById('detailDeleteBtn').onclick = () => {
-    if (confirm('Excluir este fornecedor?')) deleteSupplier(id);
-    closeModal('detailModal');
-  };
+  const title = document.getElementById('detailModalTitle');
+  if (title) title.textContent = s.name;
+  
+  const content = document.getElementById('detailContent');
+  if (content) {
+    content.innerHTML = `
+      <span class="detail-label">Categoria:</span><span class="detail-value">${s.category}</span>
+      <span class="detail-label">Preço:</span><span class="detail-value text-primary">${formatCurrency(s.price)}</span>
+      <span class="detail-label">Pago:</span><span class="detail-value text-success">${formatCurrency(s.paid)}</span>
+      <span class="detail-label">Telefone:</span><span class="detail-value">${s.contact_phone || '—'}</span>
+      <span class="detail-label">Email:</span><span class="detail-value">${s.contact_email || '—'}</span>
+      <span class="detail-label">Descrição:</span><span class="detail-value">${s.description || '—'}</span>
+    `;
+  }
+  
+  const editBtn = document.getElementById('detailEditBtn');
+  const delBtn = document.getElementById('detailDeleteBtn');
+  if (editBtn) editBtn.onclick = () => { closeModal('detailModal'); editSupplier(id); };
+  if (delBtn) delBtn.onclick = () => { if (confirm('Excluir este fornecedor?')) deleteSupplier(id); closeModal('detailModal'); };
 
   new bootstrap.Modal(document.getElementById('detailModal')).show();
 }
@@ -715,22 +609,26 @@ function showPaymentDetail(id) {
     if (sup) entityName = sup.name;
   }
 
-  document.getElementById('detailModalTitle').textContent = 'Detalhes do Pagamento';
-  document.getElementById('detailContent').innerHTML = `
-    <span class="detail-label">Data:</span><span class="detail-value">${formatDate(p.payment_date)}</span>
-    <span class="detail-label">Item:</span><span class="detail-value">${entityName}</span>
-    <span class="detail-label">Descrição:</span><span class="detail-value">${p.description || '—'}</span>
-    <span class="detail-label">Valor:</span><span class="detail-value text-success fw-bold">${formatCurrency(p.amount)}</span>
-    <span class="detail-label">Método:</span><span class="detail-value">${(p.payment_method || '').toUpperCase()}</span>
-    <span class="detail-label">Comprovante:</span><span class="detail-value">${p.receipt_number || '—'}</span>
-    <span class="detail-label">Status:</span><span class="detail-value"><span class="badge bg-success">${p.status}</span></span>
-  `;
+  const title = document.getElementById('detailModalTitle');
+  if (title) title.textContent = 'Detalhes do Pagamento';
+  
+  const content = document.getElementById('detailContent');
+  if (content) {
+    content.innerHTML = `
+      <span class="detail-label">Data:</span><span class="detail-value">${formatDate(p.payment_date)}</span>
+      <span class="detail-label">Item:</span><span class="detail-value">${entityName}</span>
+      <span class="detail-label">Descrição:</span><span class="detail-value">${p.description || '—'}</span>
+      <span class="detail-label">Valor:</span><span class="detail-value text-success fw-bold">${formatCurrency(p.amount)}</span>
+      <span class="detail-label">Método:</span><span class="detail-value">${(p.payment_method || '').toUpperCase()}</span>
+      <span class="detail-label">Comprovante:</span><span class="detail-value">${p.receipt_number || '—'}</span>
+      <span class="detail-label">Status:</span><span class="detail-value"><span class="badge bg-success">${p.status}</span></span>
+    `;
+  }
 
-  document.getElementById('detailEditBtn').style.display = 'none';
-  document.getElementById('detailDeleteBtn').onclick = () => {
-    if (confirm('Excluir este pagamento?')) deletePayment(id);
-    closeModal('detailModal');
-  };
+  const editBtn = document.getElementById('detailEditBtn');
+  const delBtn = document.getElementById('detailDeleteBtn');
+  if (editBtn) editBtn.style.display = 'none';
+  if (delBtn) delBtn.onclick = () => { if (confirm('Excluir este pagamento?')) deletePayment(id); closeModal('detailModal'); };
 
   new bootstrap.Modal(document.getElementById('detailModal')).show();
 }
@@ -738,263 +636,165 @@ function showPaymentDetail(id) {
 // ==================== CRUD ====================
 async function saveService(e) {
   e.preventDefault();
-  
-  const id = document.getElementById('svc-id').value;
+  const id = document.getElementById('svc-id')?.value || document.getElementById('service-id')?.value;
   const data = {
-    name: document.getElementById('svc-name').value,
-    category: document.getElementById('svc-category').value,
-    value: parseFloat(document.getElementById('svc-value').value),
-    due_date: document.getElementById('svc-due-date').value || null,
-    notes: document.getElementById('svc-notes').value || ''
+    name: document.getElementById('svc-name')?.value || document.getElementById('service-name')?.value,
+    category: document.getElementById('svc-category')?.value || document.getElementById('service-category')?.value,
+    value: parseFloat((document.getElementById('svc-value')?.value || document.getElementById('service-value')?.value) || 0),
+    due_date: (document.getElementById('svc-due-date')?.value || document.getElementById('service-due-date')?.value) || null,
+    notes: (document.getElementById('svc-notes')?.value || document.getElementById('service-notes')?.value) || ''
   };
 
   try {
     let error;
-    if (id) {
-      ({ error } = await supabase.from('services').update(data).eq('id', id));
-    } else {
-      ({ error } = await supabase.from('services').insert([data]));
-    }
-
+    if (id) ({ error } = await supabase.from('services').update(data).eq('id', id));
+    else ({ error } = await supabase.from('services').insert([data]));
     if (error) throw error;
-    
     closeModal('serviceModal');
     showToast('Serviço salvo com sucesso!');
     loadData();
-  } catch (err) {
-    showToast('Erro ao salvar: ' + err.message, 'danger');
-  }
+  } catch (err) { showToast('Erro ao salvar: ' + err.message, 'danger'); }
 }
 
-function editService(id) {
-  openModal('service', id);
-}
+function editService(id) { openModal('service', id); }
 
 async function deleteService(id) {
   if (!confirm('Tem certeza? Isso apagará todos os pagamentos associados.')) return;
-  
   try {
     const { error } = await supabase.from('services').delete().eq('id', id);
     if (error) throw error;
-    
     showToast('Serviço excluído!');
     loadData();
-  } catch (err) {
-    showToast('Erro ao excluir: ' + err.message, 'danger');
-  }
+  } catch (err) { showToast('Erro ao excluir: ' + err.message, 'danger'); }
 }
 
 async function saveSupplier(e) {
   e.preventDefault();
-  
-  const id = document.getElementById('sup-id').value;
+  const id = document.getElementById('sup-id')?.value || document.getElementById('supplier-id')?.value;
   const data = {
-    name: document.getElementById('sup-name').value,
-    category: document.getElementById('sup-category').value,
-    price: parseFloat(document.getElementById('sup-price').value),
-    rating: parseInt(document.getElementById('sup-rating').value) || 0,
-    contact_phone: document.getElementById('sup-phone').value || '',
-    contact_email: document.getElementById('sup-email').value || '',
-    description: document.getElementById('sup-description').value || '',
-    notes: document.getElementById('sup-notes').value || ''
+    name: document.getElementById('sup-name')?.value || document.getElementById('supplier-name')?.value,
+    category: document.getElementById('sup-category')?.value || document.getElementById('supplier-category')?.value,
+    price: parseFloat((document.getElementById('sup-price')?.value || document.getElementById('supplier-price')?.value) || 0),
+    rating: parseInt((document.getElementById('sup-rating')?.value || document.getElementById('supplier-rating')?.value) || 0),
+    contact_phone: (document.getElementById('sup-phone')?.value || document.getElementById('supplier-phone')?.value) || '',
+    contact_email: (document.getElementById('sup-email')?.value || document.getElementById('supplier-email')?.value) || '',
+    description: (document.getElementById('sup-description')?.value || document.getElementById('supplier-description')?.value) || '',
+    notes: (document.getElementById('sup-notes')?.value || document.getElementById('supplier-notes')?.value) || ''
   };
 
   try {
     let error;
-    if (id) {
-      ({ error } = await supabase.from('suppliers').update(data).eq('id', id));
-    } else {
-      ({ error } = await supabase.from('suppliers').insert([data]));
-    }
-
+    if (id) ({ error } = await supabase.from('suppliers').update(data).eq('id', id));
+    else ({ error } = await supabase.from('suppliers').insert([data]));
     if (error) throw error;
-    
     closeModal('supplierModal');
     showToast('Fornecedor salvo!');
     loadData();
-  } catch (err) {
-    showToast('Erro ao salvar: ' + err.message, 'danger');
-  }
+  } catch (err) { showToast('Erro ao salvar: ' + err.message, 'danger'); }
 }
 
-function editSupplier(id) {
-  openModal('supplier', id);
-}
+function editSupplier(id) { openModal('supplier', id); }
 
 async function deleteSupplier(id) {
   if (!confirm('Excluir fornecedor?')) return;
-  
   try {
     const { error } = await supabase.from('suppliers').delete().eq('id', id);
     if (error) throw error;
-    
     showToast('Fornecedor excluído!');
     loadData();
-  } catch (err) {
-    showToast('Erro ao excluir: ' + err.message, 'danger');
-  }
+  } catch (err) { showToast('Erro ao excluir: ' + err.message, 'danger'); }
 }
 
 async function registerPayment(e) {
   e.preventDefault();
   
-  const rawItem = document.getElementById('pay-item').value;
-  if (!rawItem || rawItem.includes('Nenhum')) {
-    showToast('Selecione um item para pagar', 'warning');
-    return;
-  }
+  const rawItem = document.getElementById('pay-item')?.value;
+  if (!rawItem || rawItem.includes('Nenhum')) { showToast('Selecione um item para pagar', 'warning'); return; }
 
   const [type, idStr] = rawItem.split('-');
   const id = parseInt(idStr);
   
   // Obter valor do input (aceita vírgula ou ponto)
-  const amountStr = document.getElementById('pay-amount').value.replace(',', '.');
+  const amountInput = document.getElementById('pay-amount');
+  const amountStr = (amountInput?.value || '').replace(',', '.');
   const amount = parseFloat(amountStr);
 
   // ✅ CORREÇÃO: Ler do data attribute (valor numérico puro)
   const infoBox = document.getElementById('payment-info-box');
-  const remaining = parseFloat(infoBox.dataset.remaining || 0);
+  const remaining = parseFloat(infoBox?.dataset?.remaining || 0);
   
-  // Validação
-  if (isNaN(amount) || amount <= 0) {
-    showToast('Valor inválido', 'danger');
-    return;
-  }
-  
-  if (amount > remaining) {
-    showToast(`Valor excede o restante de ${formatCurrency(remaining)}`, 'danger');
-    return;
-  }
-
-  const data = {
-    entity_type: type,
-    entity_id: id,
-    amount: amount,  // ✅ Já é número correto
-    payment_date: document.getElementById('pay-date').value,
-    payment_method: document.getElementById('pay-method').value,
-    description: document.getElementById('pay-description').value || '',
-    receipt_number: document.getElementById('pay-receipt').value || '',
-    status: 'completed'
-  };
-
-  try {
-    const { error } = await supabase.from('payments').insert([data]);
-    if (error) throw error;
-    
-    closeModal('paymentModal');
-    showToast('✅ Pagamento registrado com sucesso!');
-    loadData();
-  } catch (err) {
-    showToast('Erro ao registrar: ' + err.message, 'danger');
-  }
-}
-  
-  if (amount > remaining) {
-    showToast(`Valor excede o restante de ${formatCurrency(remaining)}`, 'danger');
-    return;
-  }
+  if (isNaN(amount) || amount <= 0) { showToast('Valor inválido', 'danger'); return; }
+  if (amount > remaining) { showToast(`Valor excede o restante de ${formatCurrency(remaining)}`, 'danger'); return; }
 
   const data = {
     entity_type: type,
     entity_id: id,
     amount: amount,
-    payment_date: document.getElementById('pay-date').value,
-    payment_method: document.getElementById('pay-method').value,
-    description: document.getElementById('pay-description').value || '',
-    receipt_number: document.getElementById('pay-receipt').value || '',
+    payment_date: document.getElementById('pay-date')?.value,
+    payment_method: document.getElementById('pay-method')?.value,
+    description: (document.getElementById('pay-description')?.value) || '',
+    receipt_number: (document.getElementById('pay-receipt')?.value) || '',
     status: 'completed'
   };
 
   try {
     const { error } = await supabase.from('payments').insert([data]);
     if (error) throw error;
-    
     closeModal('paymentModal');
     showToast('✅ Pagamento registrado com sucesso!');
     loadData();
-  } catch (err) {
-    showToast('Erro ao registrar: ' + err.message, 'danger');
-  }
+  } catch (err) { showToast('Erro ao registrar: ' + err.message, 'danger'); }
 }
+
 async function deletePayment(id) {
   if (!confirm('Excluir pagamento? O saldo será recalculado automaticamente.')) return;
-  
   try {
     const { error } = await supabase.from('payments').delete().eq('id', id);
     if (error) throw error;
-    
     showToast('Pagamento excluído!');
     loadData();
-  } catch (err) {
-    showToast('Erro ao excluir: ' + err.message, 'danger');
-  }
+  } catch (err) { showToast('Erro ao excluir: ' + err.message, 'danger'); }
 }
 
 async function saveSettings(e) {
   e.preventDefault();
-  
   const data = {
-    couple_name: document.getElementById('set-couple-name').value,
-    wedding_date: document.getElementById('set-wedding-date').value || null,
-    guest_count: parseInt(document.getElementById('set-guest-count').value) || 0,
-    budget_total: parseFloat(document.getElementById('set-budget-total').value) || 0,
-    theme: document.getElementById('set-theme').value || '',
-    location: document.getElementById('set-location').value || ''
+    couple_name: (document.getElementById('set-couple-name')?.value || document.getElementById('couple-name')?.value) || '',
+    wedding_date: (document.getElementById('set-wedding-date')?.value || document.getElementById('wedding-date')?.value) || null,
+    guest_count: parseInt((document.getElementById('set-guest-count')?.value || document.getElementById('guest-count')?.value) || 0),
+    budget_total: parseFloat((document.getElementById('set-budget-total')?.value || document.getElementById('budget-total')?.value) || 0),
+    theme: (document.getElementById('set-theme')?.value || document.getElementById('wedding-theme')?.value) || '',
+    location: (document.getElementById('set-location')?.value || document.getElementById('wedding-location')?.value) || ''
   };
 
   try {
     const { count } = await supabase.from('wedding_settings').select('id').limit(1);
-    
     let error;
-    if (count > 0) {
-      ({ error } = await supabase.from('wedding_settings').update(data).eq('id', 1));
-    } else {
-      ({ error } = await supabase.from('wedding_settings').insert([{ id: 1, ...data }]));
-    }
-
+    if (count > 0) ({ error } = await supabase.from('wedding_settings').update(data).eq('id', 1));
+    else ({ error } = await supabase.from('wedding_settings').insert([{ id: 1, ...data }]));
     if (error) throw error;
-    
     showToast('Configurações salvas!');
     loadData();
-  } catch (err) {
-    showToast('Erro ao salvar: ' + err.message, 'danger');
-  }
+  } catch (err) { showToast('Erro ao salvar: ' + err.message, 'danger'); }
 }
 
-// ==================== BUSCA/FILTRO ====================
+// ==================== BUSCA ====================
 function initSearch() {
-  // Buscar serviços
   document.getElementById('search-services')?.addEventListener('input', (e) => {
     const term = e.target.value.toLowerCase();
-    const rows = document.querySelectorAll('#services-table-body tr');
-    rows.forEach(row => {
-      const text = row.textContent.toLowerCase();
-      row.style.display = text.includes(term) ? '' : 'none';
+    document.querySelectorAll('#services-table-body tr').forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
     });
   });
-
-  // Buscar fornecedores
-  document.getElementById('search-suppliers')?.addEventListener('input', (e) => {
-    const term = e.target.value.toLowerCase();
-    const cards = document.querySelectorAll('#suppliers-container .col-lg-4, #suppliers-container .col-md-6');
-    cards.forEach(card => {
-      const text = card.textContent.toLowerCase();
-      card.style.display = text.includes(term) ? '' : 'none';
-    });
-  });
-
-  // Buscar pagamentos
   document.getElementById('search-payments')?.addEventListener('input', (e) => {
     const term = e.target.value.toLowerCase();
-    const rows = document.querySelectorAll('#payments-table-body tr');
-    rows.forEach(row => {
-      const text = row.textContent.toLowerCase();
-      row.style.display = text.includes(term) ? '' : 'none';
+    document.querySelectorAll('#payments-table-body tr').forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
     });
   });
 }
 
-// ==================== EXPORTAR DADOS ====================
+// ==================== EXPORTAR ====================
 function exportData() {
   const dataStr = JSON.stringify(appState, null, 2);
   const blob = new Blob([dataStr], { type: 'application/json' });
@@ -1008,16 +808,13 @@ function exportData() {
   showToast('Dados exportados com sucesso!');
 }
 
-// ==================== INICIALIZAÇÃO FINAL ====================
+// ==================== INICIALIZAÇÃO ====================
 document.addEventListener('DOMContentLoaded', () => {
   console.log('💍 CRM Casamento Perfeito - Iniciando...');
   
-  // Navegação por abas
-  document.querySelectorAll('[data-section]').forEach(el => {
-    el.addEventListener('click', (e) => {
-      e.preventDefault();
-      showSection(el.dataset.section);
-    });
+  // Navegação
+  document.querySelectorAll('[data-section], [data-tab]').forEach(el => {
+    el.addEventListener('click', (e) => { e.preventDefault(); showSection(el.dataset.section || el.dataset.tab); });
   });
 
   // Formulários
@@ -1026,12 +823,18 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('payment-form')?.addEventListener('submit', registerPayment);
   document.getElementById('settings-form')?.addEventListener('submit', saveSettings);
 
-  // Listener para tipo de pagamento (atualiza selects)
+  // Listener para tipo de pagamento
   document.getElementById('pay-type')?.addEventListener('change', populatePaymentSelects);
 
-  // Inicializar busca
+  // Botões de ação rápida
+  document.getElementById('btn-new-service')?.addEventListener('click', () => openModal('service'));
+  document.getElementById('btn-new-supplier')?.addEventListener('click', () => openModal('supplier'));
+  document.getElementById('btn-new-payment')?.addEventListener('click', () => openModal('payment'));
+  document.getElementById('btn-refresh-dashboard')?.addEventListener('click', loadData);
+
+  // Busca
   initSearch();
   
-  // Carregar dados iniciais
+  // Carregar dados
   loadData();
 });

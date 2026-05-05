@@ -1,6 +1,7 @@
 /**
- * CRM Casamento Perfeito - Sistema Completo
- * Conecta ao Supabase e gerencia todos os dados
+ * CRM Casamento Perfeito - Core Logic
+ * Conecta ao Supabase e gerencia toda a aplicação
+ * Compatível com index.html profissional
  */
 
 // ==================== INICIALIZAÇÃO ====================
@@ -34,19 +35,26 @@ const getDaysLeft = (dateStr) => {
 // Toast notifications
 function showToast(message, type = 'success') {
   const toast = document.createElement('div');
-  toast.className = `alert alert-${type} position-fixed bottom-0 end-0 m-3`;
+  toast.className = `alert alert-${type} position-fixed bottom-0 end-0 m-3 shadow`;
   toast.style.zIndex = '9999';
   toast.style.minWidth = '300px';
-  toast.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>${message}`;
+  toast.innerHTML = `
+    <i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'exclamation-circle-fill'} me-2"></i>
+    ${message}
+  `;
   document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
 
 // ==================== NAVEGAÇÃO ====================
 function showSection(sectionId) {
   // Esconder todas as seções
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.section-box').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
   
   // Mostrar seção alvo
   const target = document.getElementById(sectionId);
@@ -56,7 +64,7 @@ function showSection(sectionId) {
   }
   
   // Atualizar navegação
-  const navLink = document.querySelector(`[data-tab="${sectionId}"]`);
+  const navLink = document.querySelector(`[data-section="${sectionId}"]`);
   if (navLink) navLink.classList.add('active');
 }
 
@@ -114,19 +122,33 @@ function renderDashboard() {
   
   const pending = Math.max(totalBudget - totalPaid, 0);
 
-  // Atualizar cards
-  document.getElementById('total-budget').textContent = formatCurrency(totalBudget);
-  document.getElementById('total-paid').textContent = formatCurrency(totalPaid);
-  document.getElementById('total-pending').textContent = formatCurrency(pending);
-  document.getElementById('days-until-wedding').textContent = getDaysLeft(appState.settings.wedding_date);
+  // Atualizar cards do dashboard
+  document.getElementById('dash-budget-total').textContent = formatCurrency(totalBudget);
+  document.getElementById('dash-paid-total').textContent = formatCurrency(totalPaid);
+  document.getElementById('dash-pending-total').textContent = formatCurrency(pending);
+  document.getElementById('dash-days-left').textContent = getDaysLeft(appState.settings.wedding_date);
+  
+  if (appState.settings.wedding_date) {
+    document.getElementById('wedding-date-display').textContent = `Até ${formatDate(appState.settings.wedding_date)}`;
+  }
 
   // Último pagamento
   const lastPayment = appState.payments[0];
   if (lastPayment) {
     document.getElementById('last-payment-amount').textContent = formatCurrency(lastPayment.amount);
+    
+    let entityName = 'Pagamento';
+    if (lastPayment.entity_type === 'service') {
+      const svc = appState.services.find(s => s.id === lastPayment.entity_id);
+      if (svc) entityName = svc.name;
+    } else {
+      const sup = appState.suppliers.find(s => s.id === lastPayment.entity_id);
+      if (sup) entityName = sup.name;
+    }
+    
     document.getElementById('last-payment-meta').innerHTML = `
       <i class="bi bi-check-circle-fill me-1"></i> 
-      ${lastPayment.description || 'Pagamento'} • ${formatDate(lastPayment.payment_date)}
+      ${lastPayment.description || entityName} • ${formatDate(lastPayment.payment_date)}
     `;
   } else {
     document.getElementById('last-payment-amount').textContent = 'R$ 0,00';
@@ -139,32 +161,32 @@ function renderDashboard() {
     .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
     .slice(0, 5);
 
-  const upList = document.getElementById('upcoming-due');
+  const upList = document.getElementById('dash-upcoming');
   if (upcoming.length === 0) {
-    upList.innerHTML = '<p class="text-muted">Nenhum vencimento próximo</p>';
+    upList.innerHTML = '<li class="list-group-item text-center text-muted py-3">Nenhum vencimento próximo</li>';
   } else {
     upList.innerHTML = upcoming.map(s => {
       const remaining = parseFloat(s.value || 0) - parseFloat(s.paid || 0);
       return `
-        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+        <li class="list-group-item d-flex justify-content-between align-items-center cursor-pointer" onclick="showSection('servicos')">
           <div>
             <strong>${s.name}</strong><br>
             <small class="text-muted">${formatDate(s.due_date)}</small>
           </div>
           <span class="badge bg-danger">${formatCurrency(remaining)}</span>
-        </div>
+        </li>
       `;
     }).join('');
   }
 
   // Atividade recente
   const recent = appState.payments.slice(0, 5);
-  const actList = document.getElementById('recent-activity');
+  const actList = document.getElementById('dash-activity');
   if (recent.length === 0) {
-    actList.innerHTML = '<p class="text-muted">Nenhuma atividade recente</p>';
+    actList.innerHTML = '<li class="list-group-item text-center text-muted py-3">Nenhuma atividade recente</li>';
   } else {
     actList.innerHTML = recent.map(p => {
-      let entityName = 'Item removido';
+      let entityName = 'Item';
       if (p.entity_type === 'service') {
         const svc = appState.services.find(s => s.id === p.entity_id);
         if (svc) entityName = svc.name;
@@ -174,20 +196,20 @@ function renderDashboard() {
       }
       
       return `
-        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+        <li class="list-group-item d-flex justify-content-between align-items-center cursor-pointer" onclick="showSection('pagamentos')">
           <div>
             <strong>${p.description || entityName}</strong><br>
             <small class="text-muted">${formatDate(p.payment_date)} • ${(p.payment_method || '').toUpperCase()}</small>
           </div>
           <span class="badge bg-success">${formatCurrency(p.amount)}</span>
-        </div>
+        </li>
       `;
     }).join('');
   }
 
   // Progresso do orçamento
   const progress = totalBudget > 0 ? (totalPaid / totalBudget) * 100 : 0;
-  document.getElementById('budget-progress').innerHTML = `
+  document.getElementById('dash-progress').innerHTML = `
     <div class="progress mb-2" style="height: 10px;">
       <div class="progress-bar bg-success" style="width: ${progress}%"></div>
     </div>
@@ -196,10 +218,11 @@ function renderDashboard() {
 }
 
 function renderServices() {
-  const tbody = document.getElementById('services-table').querySelector('tbody');
+  const tbody = document.getElementById('services-table-body');
   
   if (appState.services.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">Nenhum serviço cadastrado</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">Nenhum serviço cadastrado</td></tr>';
+    document.getElementById('services-count').textContent = '0 registros';
     return;
   }
 
@@ -209,27 +232,35 @@ function renderServices() {
     const remaining = value - paid;
     const percent = value > 0 ? (paid / value) * 100 : 0;
     
-    let statusClass = 'bg-warning text-dark';
+    let statusClass = 'badge-pending';
     let statusText = 'Pendente';
     if (remaining <= 0) {
-      statusClass = 'bg-success';
+      statusClass = 'badge-paid';
       statusText = 'Pago';
     } else if (paid > 0) {
-      statusClass = 'bg-info';
+      statusClass = 'badge-partial';
       statusText = 'Parcial';
     }
 
+    const progressClass = percent === 100 ? 'progress-paid' : percent > 0 ? 'progress-partial' : 'progress-pending';
+
     return `
       <tr onclick="showServiceDetail(${s.id})" style="cursor: pointer;">
-        <td><strong>${s.name}</strong></td>
+        <td class="fw-bold">${s.name}</td>
         <td><span class="badge bg-secondary">${s.category || '—'}</span></td>
         <td class="text-end">${formatCurrency(value)}</td>
         <td class="text-end text-success">${formatCurrency(paid)}</td>
-        <td class="text-end text-danger">${formatCurrency(remaining)}</td>
+        <td>
+          <div class="progress" style="height: 6px;">
+            <div class="progress-bar ${progressClass}" style="width: ${percent}%"></div>
+          </div>
+          <small class="text-muted">${percent.toFixed(0)}%</small>
+        </td>
+        <td class="text-end fw-bold ${remaining > 0 ? 'text-danger' : 'text-success'}">${formatCurrency(remaining)}</td>
         <td>${formatDate(s.due_date)}</td>
         <td><span class="badge ${statusClass}">${statusText}</span></td>
-        <td>
-          <button class="btn btn-sm btn-success me-1" onclick="event.stopPropagation(); openPaymentForService(${s.id})" title="Pagar">
+        <td class="text-end" onclick="event.stopPropagation()">
+          <button class="btn btn-sm btn-success me-1" onclick="openPaymentForService(${s.id})" title="Pagar">
             <i class="bi bi-currency-dollar"></i>
           </button>
           <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); editService(${s.id})" title="Editar">
@@ -242,13 +273,16 @@ function renderServices() {
       </tr>
     `;
   }).join('');
+  
+  document.getElementById('services-count').textContent = `${appState.services.length} registros`;
 }
 
 function renderSuppliers() {
   const container = document.getElementById('suppliers-container');
   
   if (appState.suppliers.length === 0) {
-    container.innerHTML = '<div class="card"><div class="card-body text-center text-muted">Nenhum fornecedor cadastrado</div></div>';
+    container.innerHTML = '<div class="col-12 text-center text-muted py-5"><i class="bi bi-hourglass-split fs-1 d-block mb-2"></i>Nenhum fornecedor cadastrado</div>';
+    document.getElementById('suppliers-count').textContent = '0 registros';
     return;
   }
 
@@ -258,8 +292,8 @@ function renderSuppliers() {
     const remaining = price - paid;
     
     return `
-      <div class="col-md-6 col-lg-4">
-        <div class="supplier-card card h-100" onclick="showSupplierDetail(${s.id})" style="cursor: pointer;">
+      <div class="col-lg-4 col-md-6">
+        <div class="card h-100 cursor-pointer" onclick="showSupplierDetail(${s.id})">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-start mb-2">
               <h5 class="card-title mb-0">${s.name}</h5>
@@ -278,19 +312,25 @@ function renderSuppliers() {
               <small>Pago: <strong class="text-success">${formatCurrency(paid)}</strong></small>
               ${s.rating ? `<small>${'⭐'.repeat(parseInt(s.rating) || 0)}</small>` : ''}
             </div>
-            ${remaining > 0 ? `<small class="text-danger">Restante: ${formatCurrency(remaining)}</small>` : '<small class="text-success">✓ Quitado</small>'}
+            ${remaining > 0 
+              ? `<small class="text-danger">Restante: ${formatCurrency(remaining)}</small>` 
+              : '<small class="text-success"><i class="bi bi-check-circle me-1"></i>Quitado</small>'
+            }
           </div>
         </div>
       </div>
     `;
   }).join('');
+
+  document.getElementById('suppliers-count').textContent = `${appState.suppliers.length} registros`;
 }
 
 function renderPayments() {
-  const tbody = document.getElementById('payments-table').querySelector('tbody');
+  const tbody = document.getElementById('payments-table-body');
   
   if (appState.payments.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Nenhum pagamento registrado</td></tr>';
+    document.getElementById('payments-count').textContent = '0 registros';
     return;
   }
 
@@ -315,14 +355,16 @@ function renderPayments() {
         <td><span class="badge bg-secondary">${(p.payment_method || '').toUpperCase()}</span></td>
         <td><span class="badge bg-success">${p.status}</span></td>
         <td>${p.receipt_number || '—'}</td>
-        <td>
-          <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deletePayment(${p.id})">
+        <td class="text-end" onclick="event.stopPropagation()">
+          <button class="btn btn-sm btn-outline-danger" onclick="deletePayment(${p.id})">
             <i class="bi bi-trash"></i>
           </button>
         </td>
       </tr>
     `;
   }).join('');
+
+  document.getElementById('payments-count').textContent = `${appState.payments.length} registros`;
 }
 
 function renderBudget() {
@@ -362,7 +404,7 @@ function renderBudget() {
     categories[s.category].paid += parseFloat(s.paid || 0);
   });
 
-  document.getElementById('budget-breakdown').innerHTML = Object.keys(categories).map(cat => {
+  document.getElementById('budget-categories').innerHTML = Object.keys(categories).map(cat => {
     const info = categories[cat];
     const pct = info.total > 0 ? (info.paid / info.total) * 100 : 0;
     return `
@@ -377,15 +419,37 @@ function renderBudget() {
       </div>
     `;
   }).join('') || '<p class="text-muted text-center">Sem categorias</p>';
+
+  // Todas as entradas
+  const allEntries = [
+    ...appState.services.map(s => ({...s, type: 'Serviço'})),
+    ...appState.suppliers.map(s => ({...s, type: 'Fornecedor', value: s.price}))
+  ];
+
+  document.getElementById('all-entries-body').innerHTML = allEntries.map(item => {
+    const val = parseFloat(item.value || 0);
+    const paid = parseFloat(item.paid || 0);
+    const rem = val - paid;
+    return `
+      <tr>
+        <td><span class="badge bg-secondary">${item.type}</span></td>
+        <td>${item.name}</td>
+        <td>${item.category}</td>
+        <td class="text-end">${formatCurrency(val)}</td>
+        <td class="text-end text-success">${formatCurrency(paid)}</td>
+        <td><span class="badge ${rem <= 0 ? 'bg-success' : 'bg-warning text-dark'}">${rem <= 0 ? 'Pago' : 'Pendente'}</span></td>
+      </tr>
+    `;
+  }).join('');
 }
 
 function renderSettings() {
-  document.getElementById('couple-name').value = appState.settings.couple_name || '';
-  document.getElementById('wedding-date').value = appState.settings.wedding_date || '';
-  document.getElementById('guest-count').value = appState.settings.guest_count || '';
-  document.getElementById('budget-total').value = appState.settings.budget_total || '';
-  document.getElementById('wedding-theme').value = appState.settings.theme || '';
-  document.getElementById('wedding-location').value = appState.settings.location || '';
+  document.getElementById('set-couple-name').value = appState.settings.couple_name || '';
+  document.getElementById('set-wedding-date').value = appState.settings.wedding_date || '';
+  document.getElementById('set-guest-count').value = appState.settings.guest_count || '';
+  document.getElementById('set-budget-total').value = appState.settings.budget_total || '';
+  document.getElementById('set-theme').value = appState.settings.theme || '';
+  document.getElementById('set-location').value = appState.settings.location || '';
 }
 
 // ==================== MODAIS ====================
@@ -393,13 +457,13 @@ function openModal(type, id = null) {
   let modalId, titleId;
   
   if (type === 'service') {
-    modalId = 'service-modal';
-    titleId = 'service-modal-title';
+    modalId = 'serviceModal';
+    titleId = 'serviceModalTitle';
   } else if (type === 'supplier') {
-    modalId = 'supplier-modal';
-    titleId = 'supplier-modal-title';
+    modalId = 'supplierModal';
+    titleId = 'supplierModalTitle';
   } else if (type === 'payment') {
-    modalId = 'payment-modal';
+    modalId = 'paymentModal';
   }
 
   if (titleId) {
@@ -422,14 +486,15 @@ function closeModal(modalId) {
   if (modal) {
     modal.hide();
     // Resetar formulários
-    const form = document.getElementById(modalId.replace('-modal', '-form'));
+    const form = document.getElementById(modalId.replace('Modal', '-form'));
     if (form) form.reset();
   }
 }
 
+// ==================== PAGAMENTO PARCIAL COM INFO DINÂMICA ====================
 function populatePaymentSelects() {
-  const type = document.getElementById('payment-entity-type').value;
-  const select = document.getElementById('payment-entity-id');
+  const type = document.getElementById('pay-type').value;
+  const select = document.getElementById('pay-item');
   const infoBox = document.getElementById('payment-info-box');
   
   select.innerHTML = '<option value="">Selecione um item</option>';
@@ -441,6 +506,7 @@ function populatePaymentSelects() {
 
   let items = [];
   if (type === 'service') {
+    // Mostrar apenas itens com saldo pendente
     items = appState.services.filter(s => (parseFloat(s.value || 0) - parseFloat(s.paid || 0)) > 0);
     items.forEach(item => {
       const remaining = parseFloat(item.value || 0) - parseFloat(item.paid || 0);
@@ -458,17 +524,22 @@ function populatePaymentSelects() {
     select.innerHTML = '<option value="">Nenhum item pendente</option>';
   }
 
-  // Adicionar listener para atualizar informações
+  // Adicionar listener para atualizar informações quando selecionar
   select.onchange = updatePaymentInfo;
 }
 
 function updatePaymentInfo() {
-  const select = document.getElementById('payment-entity-id');
+  const select = document.getElementById('pay-item');
   const infoBox = document.getElementById('payment-info-box');
-  const amountInput = document.getElementById('payment-amount');
+  const amountInput = document.getElementById('pay-amount');
+  const amountHint = document.getElementById('pay-amount-hint');
   
   if (!select || !select.value || select.value.includes('Nenhum')) {
     if (infoBox) infoBox.style.display = 'none';
+    if (amountInput) {
+      amountInput.disabled = true;
+      amountHint.textContent = '';
+    }
     return;
   }
 
@@ -498,32 +569,44 @@ function updatePaymentInfo() {
 
   if (item && infoBox) {
     infoBox.style.display = 'block';
+    
+    // Atualizar valores na caixa de informações
     document.getElementById('info-total').textContent = formatCurrency(total);
     document.getElementById('info-paid').textContent = formatCurrency(paid);
     document.getElementById('info-remaining').textContent = formatCurrency(remaining);
     
     // Atualizar barra de progresso
     const pct = total > 0 ? (paid / total) * 100 : 0;
-    const progressBar = infoBox.querySelector('.progress-bar');
-    if (progressBar) progressBar.style.width = `${pct}%`;
+    document.getElementById('info-progress').style.width = `${pct}%`;
     
-    // Limitar valor máximo
+    // Limitar valor máximo do pagamento
     if (amountInput) {
       amountInput.max = remaining;
       amountInput.placeholder = `Máx: ${formatCurrency(remaining)}`;
+      amountHint.textContent = `Máximo permitido: ${formatCurrency(remaining)}`;
+      
+      // Desabilitar se já estiver quitado
+      if (remaining <= 0) {
+        amountInput.disabled = true;
+        amountHint.textContent = 'Item já está quitado';
+      } else {
+        amountInput.disabled = false;
+      }
     }
   }
 }
 
+// Abrir modal de pagamento já com serviço selecionado
 function openPaymentForService(serviceId) {
   openModal('payment');
   
+  // Aguardar modal abrir e selects popularem
   setTimeout(() => {
-    document.getElementById('payment-entity-type').value = 'service';
+    document.getElementById('pay-type').value = 'service';
     populatePaymentSelects();
     
     setTimeout(() => {
-      const select = document.getElementById('payment-entity-id');
+      const select = document.getElementById('pay-item');
       const option = select.querySelector(`option[value="service-${serviceId}"]`);
       if (option) {
         select.value = `service-${serviceId}`;
@@ -537,30 +620,30 @@ function fillForm(type, id) {
   if (type === 'service') {
     const item = appState.services.find(s => s.id == id);
     if (item) {
-      document.getElementById('service-id').value = item.id;
-      document.getElementById('service-name').value = item.name;
-      document.getElementById('service-category').value = item.category;
-      document.getElementById('service-value').value = item.value;
-      document.getElementById('service-due-date').value = item.due_date || '';
-      document.getElementById('service-notes').value = item.notes || '';
+      document.getElementById('svc-id').value = item.id;
+      document.getElementById('svc-name').value = item.name;
+      document.getElementById('svc-category').value = item.category;
+      document.getElementById('svc-value').value = item.value;
+      document.getElementById('svc-due-date').value = item.due_date || '';
+      document.getElementById('svc-notes').value = item.notes || '';
     }
   } else if (type === 'supplier') {
     const item = appState.suppliers.find(s => s.id == id);
     if (item) {
-      document.getElementById('supplier-id').value = item.id;
-      document.getElementById('supplier-name').value = item.name;
-      document.getElementById('supplier-category').value = item.category;
-      document.getElementById('supplier-price').value = item.price;
-      document.getElementById('supplier-rating').value = item.rating || 0;
-      document.getElementById('supplier-phone').value = item.contact_phone || '';
-      document.getElementById('supplier-email').value = item.contact_email || '';
-      document.getElementById('supplier-description').value = item.description || '';
-      document.getElementById('supplier-notes').value = item.notes || '';
+      document.getElementById('sup-id').value = item.id;
+      document.getElementById('sup-name').value = item.name;
+      document.getElementById('sup-category').value = item.category;
+      document.getElementById('sup-price').value = item.price;
+      document.getElementById('sup-rating').value = item.rating || 0;
+      document.getElementById('sup-phone').value = item.contact_phone || '';
+      document.getElementById('sup-email').value = item.contact_email || '';
+      document.getElementById('sup-description').value = item.description || '';
+      document.getElementById('sup-notes').value = item.notes || '';
     }
   }
 }
 
-// ==================== DETALHES ====================
+// ==================== DETALHES (Modal Genérico) ====================
 function showServiceDetail(id) {
   const s = appState.services.find(x => x.id === id);
   if (!s) return;
@@ -576,15 +659,15 @@ function showServiceDetail(id) {
   `;
   
   document.getElementById('detailEditBtn').onclick = () => {
-    closeModal('detail-modal');
+    closeModal('detailModal');
     editService(id);
   };
   document.getElementById('detailDeleteBtn').onclick = () => {
     if (confirm('Excluir este serviço?')) deleteService(id);
-    closeModal('detail-modal');
+    closeModal('detailModal');
   };
 
-  new bootstrap.Modal(document.getElementById('detail-modal')).show();
+  new bootstrap.Modal(document.getElementById('detailModal')).show();
 }
 
 function showSupplierDetail(id) {
@@ -602,15 +685,15 @@ function showSupplierDetail(id) {
   `;
 
   document.getElementById('detailEditBtn').onclick = () => {
-    closeModal('detail-modal');
+    closeModal('detailModal');
     editSupplier(id);
   };
   document.getElementById('detailDeleteBtn').onclick = () => {
     if (confirm('Excluir este fornecedor?')) deleteSupplier(id);
-    closeModal('detail-modal');
+    closeModal('detailModal');
   };
 
-  new bootstrap.Modal(document.getElementById('detail-modal')).show();
+  new bootstrap.Modal(document.getElementById('detailModal')).show();
 }
 
 function showPaymentDetail(id) {
@@ -640,23 +723,23 @@ function showPaymentDetail(id) {
   document.getElementById('detailEditBtn').style.display = 'none';
   document.getElementById('detailDeleteBtn').onclick = () => {
     if (confirm('Excluir este pagamento?')) deletePayment(id);
-    closeModal('detail-modal');
+    closeModal('detailModal');
   };
 
-  new bootstrap.Modal(document.getElementById('detail-modal')).show();
+  new bootstrap.Modal(document.getElementById('detailModal')).show();
 }
 
 // ==================== CRUD ====================
 async function saveService(e) {
   e.preventDefault();
   
-  const id = document.getElementById('service-id').value;
+  const id = document.getElementById('svc-id').value;
   const data = {
-    name: document.getElementById('service-name').value,
-    category: document.getElementById('service-category').value,
-    value: parseFloat(document.getElementById('service-value').value),
-    due_date: document.getElementById('service-due-date').value || null,
-    notes: document.getElementById('service-notes').value || ''
+    name: document.getElementById('svc-name').value,
+    category: document.getElementById('svc-category').value,
+    value: parseFloat(document.getElementById('svc-value').value),
+    due_date: document.getElementById('svc-due-date').value || null,
+    notes: document.getElementById('svc-notes').value || ''
   };
 
   try {
@@ -669,7 +752,7 @@ async function saveService(e) {
 
     if (error) throw error;
     
-    closeModal('service-modal');
+    closeModal('serviceModal');
     showToast('Serviço salvo com sucesso!');
     loadData();
   } catch (err) {
@@ -698,16 +781,16 @@ async function deleteService(id) {
 async function saveSupplier(e) {
   e.preventDefault();
   
-  const id = document.getElementById('supplier-id').value;
+  const id = document.getElementById('sup-id').value;
   const data = {
-    name: document.getElementById('supplier-name').value,
-    category: document.getElementById('supplier-category').value,
-    price: parseFloat(document.getElementById('supplier-price').value),
-    rating: parseInt(document.getElementById('supplier-rating').value) || 0,
-    contact_phone: document.getElementById('supplier-phone').value || '',
-    contact_email: document.getElementById('supplier-email').value || '',
-    description: document.getElementById('supplier-description').value || '',
-    notes: document.getElementById('supplier-notes').value || ''
+    name: document.getElementById('sup-name').value,
+    category: document.getElementById('sup-category').value,
+    price: parseFloat(document.getElementById('sup-price').value),
+    rating: parseInt(document.getElementById('sup-rating').value) || 0,
+    contact_phone: document.getElementById('sup-phone').value || '',
+    contact_email: document.getElementById('sup-email').value || '',
+    description: document.getElementById('sup-description').value || '',
+    notes: document.getElementById('sup-notes').value || ''
   };
 
   try {
@@ -720,7 +803,7 @@ async function saveSupplier(e) {
 
     if (error) throw error;
     
-    closeModal('supplier-modal');
+    closeModal('supplierModal');
     showToast('Fornecedor salvo!');
     loadData();
   } catch (err) {
@@ -749,7 +832,7 @@ async function deleteSupplier(id) {
 async function registerPayment(e) {
   e.preventDefault();
   
-  const rawItem = document.getElementById('payment-entity-id').value;
+  const rawItem = document.getElementById('pay-item').value;
   if (!rawItem || rawItem.includes('Nenhum')) {
     showToast('Selecione um item para pagar', 'warning');
     return;
@@ -757,9 +840,9 @@ async function registerPayment(e) {
 
   const [type, idStr] = rawItem.split('-');
   const id = parseInt(idStr);
-  const amount = parseFloat(document.getElementById('payment-amount').value);
+  const amount = parseFloat(document.getElementById('pay-amount').value);
 
-  // Validar valor
+  // Validar valor contra o restante mostrado
   const remainingText = document.getElementById('info-remaining')?.textContent || '0';
   const remaining = parseFloat(remainingText.replace(/[^\d,.-]/g, '').replace(',', '.'));
   
@@ -772,10 +855,10 @@ async function registerPayment(e) {
     entity_type: type,
     entity_id: id,
     amount: amount,
-    payment_date: document.getElementById('payment-date').value,
-    payment_method: document.getElementById('payment-method').value,
-    description: document.getElementById('payment-description').value || '',
-    receipt_number: document.getElementById('payment-receipt').value || '',
+    payment_date: document.getElementById('pay-date').value,
+    payment_method: document.getElementById('pay-method').value,
+    description: document.getElementById('pay-description').value || '',
+    receipt_number: document.getElementById('pay-receipt').value || '',
     status: 'completed'
   };
 
@@ -783,7 +866,7 @@ async function registerPayment(e) {
     const { error } = await supabase.from('payments').insert([data]);
     if (error) throw error;
     
-    closeModal('payment-modal');
+    closeModal('paymentModal');
     showToast('✅ Pagamento registrado com sucesso!');
     loadData();
   } catch (err) {
@@ -792,7 +875,7 @@ async function registerPayment(e) {
 }
 
 async function deletePayment(id) {
-  if (!confirm('Excluir pagamento? O saldo será recalculado.')) return;
+  if (!confirm('Excluir pagamento? O saldo será recalculado automaticamente.')) return;
   
   try {
     const { error } = await supabase.from('payments').delete().eq('id', id);
@@ -809,12 +892,12 @@ async function saveSettings(e) {
   e.preventDefault();
   
   const data = {
-    couple_name: document.getElementById('couple-name').value,
-    wedding_date: document.getElementById('wedding-date').value || null,
-    guest_count: parseInt(document.getElementById('guest-count').value) || 0,
-    budget_total: parseFloat(document.getElementById('budget-total').value) || 0,
-    theme: document.getElementById('wedding-theme').value || '',
-    location: document.getElementById('wedding-location').value || ''
+    couple_name: document.getElementById('set-couple-name').value,
+    wedding_date: document.getElementById('set-wedding-date').value || null,
+    guest_count: parseInt(document.getElementById('set-guest-count').value) || 0,
+    budget_total: parseFloat(document.getElementById('set-budget-total').value) || 0,
+    theme: document.getElementById('set-theme').value || '',
+    location: document.getElementById('set-location').value || ''
   };
 
   try {
@@ -836,7 +919,40 @@ async function saveSettings(e) {
   }
 }
 
-// ==================== EXPORTAR ====================
+// ==================== BUSCA/FILTRO ====================
+function initSearch() {
+  // Buscar serviços
+  document.getElementById('search-services')?.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#services-table-body tr');
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = text.includes(term) ? '' : 'none';
+    });
+  });
+
+  // Buscar fornecedores
+  document.getElementById('search-suppliers')?.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    const cards = document.querySelectorAll('#suppliers-container .col-lg-4, #suppliers-container .col-md-6');
+    cards.forEach(card => {
+      const text = card.textContent.toLowerCase();
+      card.style.display = text.includes(term) ? '' : 'none';
+    });
+  });
+
+  // Buscar pagamentos
+  document.getElementById('search-payments')?.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#payments-table-body tr');
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = text.includes(term) ? '' : 'none';
+    });
+  });
+}
+
+// ==================== EXPORTAR DADOS ====================
 function exportData() {
   const dataStr = JSON.stringify(appState, null, 2);
   const blob = new Blob([dataStr], { type: 'application/json' });
@@ -847,18 +963,18 @@ function exportData() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  showToast('Dados exportados!');
+  showToast('Dados exportados com sucesso!');
 }
 
-// ==================== INICIALIZAÇÃO ====================
+// ==================== INICIALIZAÇÃO FINAL ====================
 document.addEventListener('DOMContentLoaded', () => {
   console.log('💍 CRM Casamento Perfeito - Iniciando...');
   
-  // Navegação
-  document.querySelectorAll('.nav-tab').forEach(tab => {
-    tab.addEventListener('click', (e) => {
+  // Navegação por abas
+  document.querySelectorAll('[data-section]').forEach(el => {
+    el.addEventListener('click', (e) => {
       e.preventDefault();
-      showSection(tab.dataset.tab);
+      showSection(el.dataset.section);
     });
   });
 
@@ -866,17 +982,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('service-form')?.addEventListener('submit', saveService);
   document.getElementById('supplier-form')?.addEventListener('submit', saveSupplier);
   document.getElementById('payment-form')?.addEventListener('submit', registerPayment);
-  document.getElementById('wedding-settings-form')?.addEventListener('submit', saveSettings);
+  document.getElementById('settings-form')?.addEventListener('submit', saveSettings);
 
-  // Listener para tipo de pagamento
-  document.getElementById('payment-entity-type')?.addEventListener('change', populatePaymentSelects);
+  // Listener para tipo de pagamento (atualiza selects)
+  document.getElementById('pay-type')?.addEventListener('change', populatePaymentSelects);
 
-  // Botões de ação rápida
-  document.getElementById('btn-new-service')?.addEventListener('click', () => openModal('service'));
-  document.getElementById('btn-new-supplier')?.addEventListener('click', () => openModal('supplier'));
-  document.getElementById('btn-new-payment')?.addEventListener('click', () => openModal('payment'));
-  document.getElementById('btn-refresh-dashboard')?.addEventListener('click', loadData);
-
+  // Inicializar busca
+  initSearch();
+  
   // Carregar dados iniciais
   loadData();
 });

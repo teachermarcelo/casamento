@@ -397,16 +397,171 @@ function openModal(type, id = null) {
   if (type === 'payment') populatePaymentSelects();
 }
 
+// ==================== PAGAMENTO COM INFORMAÇÕES DINÂMICAS ====================
+
+// Popula select de itens e adiciona listener
 function populatePaymentSelects() {
+  const type = document.getElementById('pay-type').value;
   const select = document.getElementById('pay-item');
-  select.innerHTML = '<option value="">Selecione...</option>';
+  const infoBox = document.getElementById('payment-info-box');
   
-  appState.services.forEach(s => {
-    select.innerHTML += `<option value="service-${s.id}">${s.name} (${s.category})</option>`;
-  });
-  appState.suppliers.forEach(s => {
-    select.innerHTML += `<option value="supplier-${s.id}">${s.name} (${s.category})</option>`;
-  });
+  select.innerHTML = '<option value="">Selecione um item</option>';
+  infoBox.style.display = 'none';
+  
+  let items = [];
+  
+  if (type === 'service') {
+    items = appState.services.filter(s => (parseFloat(s.value || 0) - parseFloat(s.paid || 0)) > 0);
+    items.forEach(item => {
+      const remaining = parseFloat(item.value || 0) - parseFloat(item.paid || 0);
+      select.innerHTML += `<option value="service-${item.id}" data-remaining="${remaining}">${item.name} (${item.category}) - Restante: ${formatCurrency(remaining)}</option>`;
+    });
+  } else if (type === 'supplier') {
+    items = appState.suppliers.filter(s => (parseFloat(s.price || 0) - parseFloat(s.paid || 0)) > 0);
+    items.forEach(item => {
+      const remaining = parseFloat(item.price || 0) - parseFloat(item.paid || 0);
+      select.innerHTML += `<option value="supplier-${item.id}" data-remaining="${remaining}">${item.name} (${item.category}) - Restante: ${formatCurrency(remaining)}</option>`;
+    });
+  }
+  
+  if (items.length === 0) {
+    select.innerHTML = '<option value="">Nenhum item pendente</option>';
+  }
+  
+  // Listener para atualizar informações quando selecionar
+  select.removeEventListener('change', updatePaymentInfo);
+  select.addEventListener('change', updatePaymentInfo);
+}
+
+// Atualiza informações do item selecionado
+function updatePaymentInfo() {
+  const select = document.getElementById('pay-item');
+  const infoBox = document.getElementById('payment-info-box');
+  const amountInput = document.getElementById('pay-amount');
+  const amountHint = document.getElementById('pay-amount-hint');
+  
+  const selectedOption = select.options[select.selectedIndex];
+  if (!selectedOption || !selectedOption.value) {
+    infoBox.style.display = 'none';
+    amountInput.max = '';
+    amountHint.textContent = '';
+    return;
+  }
+  
+  const [type, idStr] = selectedOption.value.split('-');
+  const id = parseInt(idStr);
+  
+  let item = null;
+  let total = 0;
+  let paid = 0;
+  let remaining = 0;
+  
+  if (type === 'service') {
+    item = appState.services.find(s => s.id === id);
+    if (item) {
+      total = parseFloat(item.value || 0);
+      paid = parseFloat(item.paid || 0);
+      remaining = total - paid;
+    }
+  } else if (type === 'supplier') {
+    item = appState.suppliers.find(s => s.id === id);
+    if (item) {
+      total = parseFloat(item.price || 0);
+      paid = parseFloat(item.paid || 0);
+      remaining = total - paid;
+    }
+  }
+  
+  if (item) {
+    // Mostrar caixa de informações
+    infoBox.style.display = 'block';
+    
+    // Atualizar valores
+    document.getElementById('info-total').textContent = formatCurrency(total);
+    document.getElementById('info-paid').textContent = formatCurrency(paid);
+    document.getElementById('info-remaining').textContent = formatCurrency(remaining);
+    
+    // Atualizar barra de progresso
+    const pct = total > 0 ? (paid / total) * 100 : 0;
+    document.getElementById('info-progress').style.width = `${pct}%`;
+    
+    // Limitar valor máximo do pagamento
+    amountInput.max = remaining;
+    amountHint.textContent = `Máximo: ${formatCurrency(remaining)}`;
+    
+    // Se já estiver totalmente pago, desabilitar
+    if (remaining <= 0) {
+      amountInput.disabled = true;
+      amountHint.textContent = 'Item já está quitado';
+    } else {
+      amountInput.disabled = false;
+    }
+  }
+}
+
+// Registrar pagamento melhorado
+async function registerPayment(e) {
+  e.preventDefault();
+  
+  const rawItem = document.getElementById('pay-item').value;
+  if (!rawItem || rawItem.includes('Nenhum item')) {
+    showToast('Selecione um item para pagar', 'warning');
+    return;
+  }
+  
+  const [type, idStr] = rawItem.split('-');
+  const id = parseInt(idStr);
+  
+  const amount = parseFloat(document.getElementById('pay-amount').value);
+  
+  // Validar valor
+  const remaining = parseFloat(document.getElementById('info-remaining').textContent.replace(/[^\d,.-]/g, '').replace(',', '.'));
+  if (amount > remaining) {
+    showToast(`Valor excede o restante de ${formatCurrency(remaining)}`, 'danger');
+    return;
+  }
+  
+  const data = {
+    entity_type: type,
+    entity_id: id,
+    amount: amount,
+    payment_date: document.getElementById('pay-date').value,
+    payment_method: document.getElementById('pay-method').value,
+    description: document.getElementById('pay-description').value,
+    receipt_number: document.getElementById('pay-receipt').value,
+    status: 'completed'
+  };
+  
+  const { error } = await supabase.from('payments').insert([data]);
+  
+  if (error) {
+    showToast('Erro ao registrar: ' + error.message, 'danger');
+    return;
+  }
+  
+  bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
+  showToast('✅ Pagamento registrado com sucesso!', 'success');
+  loadData();
+}
+
+// Abrir modal de pagamento para serviço específico
+function openPaymentForService(serviceId) {
+  openModal('payment');
+  
+  // Aguardar modal abrir e selects popularem
+  setTimeout(() => {
+    document.getElementById('pay-type').value = 'service';
+    populatePaymentSelects();
+    
+    setTimeout(() => {
+      const select = document.getElementById('pay-item');
+      const option = select.querySelector(`option[value="service-${serviceId}"]`);
+      if (option) {
+        select.value = `service-${serviceId}`;
+        updatePaymentInfo();
+      }
+    }, 100);
+  }, 300);
 }
 
 // Helper para preencher formulários de edição

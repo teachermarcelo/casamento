@@ -3,268 +3,556 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CRM Casamento Perfeito</title>
+  <title>CRM Casamento Perfeito | Gestão Completa</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
   <style>
     :root {
-      --primary: #2c5e2e; --primary-dark: #1e4a20; --primary-light: #3d7a3f;
-      --bg-light: #f8f9fa; --surface: #ffffff; --border: #e9ecef;
+      --primary: #2c5e2e;
+      --primary-dark: #1e4a20;
+      --primary-light: #3d7a3f;
+      --secondary: #6c757d;
+      --success: #198754;
+      --warning: #ffc107;
+      --danger: #dc3545;
+      --info: #0dcaf0;
+      --bg-light: #f8f9fa;
+      --surface: #ffffff;
+      --border: #e9ecef;
+      --text-muted: #6c757d;
       --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
       --shadow: 0 4px 12px rgba(0,0,0,0.08);
       --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
-      --transition: all 0.2s ease;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    * { box-sizing: border-box; }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
     body {
-      background: var(--bg-light);
-      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       color: #212529;
-      line-height: 1.5;
+      line-height: 1.6;
+      min-height: 100vh;
       padding-bottom: 100px;
     }
     
-    /* Navbar */
-    .navbar { background: var(--primary) !important; box-shadow: var(--shadow); }
-    .navbar-brand { font-weight: 700; letter-spacing: -0.5px; }
-    .nav-link { font-weight: 500; padding: 0.5rem 1rem; border-radius: 8px; transition: var(--transition); }
-    .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.15); }
-    
-    /* Cards */
-    .card {
-      border: none; border-radius: 16px; box-shadow: var(--shadow);
-      transition: var(--transition); background: var(--surface);
+    /* Navbar Profissional */
+    .navbar {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%) !important;
+      box-shadow: var(--shadow-lg);
+      padding: 1rem 0;
     }
-    .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .navbar-brand {
+      font-weight: 700;
+      font-size: 1.5rem;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .nav-link {
+      font-weight: 500;
+      padding: 0.6rem 1.2rem;
+      border-radius: 10px;
+      transition: var(--transition);
+      margin: 0 0.2rem;
+      color: rgba(255,255,255,0.9) !important;
+    }
+    .nav-link:hover, .nav-link.active {
+      background: rgba(255,255,255,0.2);
+      color: white !important;
+      transform: translateY(-2px);
+    }
+    
+    /* Container Principal */
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+    
+    /* Cards Profissionais */
+    .card {
+      border: none;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+      background: var(--surface);
+      overflow: hidden;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+    }
     .card-header {
       background: linear-gradient(135deg, var(--primary), var(--primary-light));
-      color: white; border-radius: 16px 16px 0 0 !important;
-      font-weight: 600; padding: 1rem 1.25rem; border: none;
+      color: white;
+      font-weight: 600;
+      padding: 1.25rem 1.5rem;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-    .card-body { padding: 1.25rem; }
+    .card-body { padding: 1.5rem; }
     
-    /* Stats */
+    /* Stats Cards Clicáveis */
     .stat-card {
-      text-align: center; padding: 1.5rem; border-radius: 16px;
-      background: white; box-shadow: var(--shadow); cursor: pointer;
-      transition: var(--transition); border-left: 4px solid var(--primary);
+      background: white;
+      border-radius: 16px;
+      padding: 1.75rem;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      transition: var(--transition);
+      border-left: 5px solid var(--primary);
+      position: relative;
+      overflow: hidden;
     }
-    .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
-    .stat-card.bg-success { border-left-color: #198754; }
-    .stat-card.bg-warning { border-left-color: #ffc107; }
-    .stat-card.bg-info { border-left-color: #0dcaf0; }
-    .stat-value { font-size: 1.75rem; font-weight: 700; margin: 0.25rem 0; }
-    .stat-label { color: #6c757d; font-size: 0.9rem; font-weight: 500; }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 100px; height: 100px;
+      background: radial-gradient(circle, rgba(44,94,46,0.05) 0%, transparent 70%);
+      border-radius: 0 0 0 100%;
+    }
+    .stat-card:hover {
+      transform: translateY(-5px) scale(1.02);
+      box-shadow: var(--shadow-lg);
+    }
+    .stat-card.bg-success { border-left-color: var(--success); }
+    .stat-card.bg-warning { border-left-color: var(--warning); }
+    .stat-card.bg-info { border-left-color: var(--info); }
+    .stat-card.bg-danger { border-left-color: var(--danger); }
     
-    /* Tables */
-    .table { margin: 0; }
-    .table th {
-      background: #f1f5f9; font-weight: 600; color: #495057;
-      border: none; padding: 0.75rem 1rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;
+    .stat-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      opacity: 0.8;
     }
-    .table td {
-      padding: 0.75rem 1rem; border-color: var(--border); vertical-align: middle;
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      margin: 0.5rem 0;
+      color: #212529;
+    }
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+    .stat-hint {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.5rem;
+    }
+    
+    /* Widget Último Pagamento */
+    .last-payment-widget {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 16px;
+      padding: 1.75rem;
+      box-shadow: var(--shadow-lg);
+      cursor: pointer;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+    .last-payment-widget::before {
+      content: '';
+      position: absolute;
+      top: -50%; right: -20%;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    .last-payment-widget:hover {
+      transform: translateY(-5px) scale(1.02);
+      box-shadow: 0 12px 40px rgba(102,126,234,0.4);
+    }
+    .last-payment-label {
+      font-size: 0.9rem;
+      opacity: 0.9;
+      margin-bottom: 0.5rem;
+    }
+    .last-payment-amount {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin: 0.5rem 0;
+    }
+    .last-payment-meta {
+      font-size: 0.9rem;
+      opacity: 0.85;
+    }
+    
+    /* Tabelas Profissionais */
+    .table-container {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .table {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+    .table thead th {
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      color: #495057;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      letter-spacing: 0.5px;
+      padding: 1rem;
+      border: none;
+    }
+    .table tbody td {
+      padding: 1rem;
+      vertical-align: middle;
+      border-color: var(--border);
     }
     .table-hover tbody tr {
-      cursor: pointer; transition: var(--transition);
+      cursor: pointer;
+      transition: var(--transition);
     }
     .table-hover tbody tr:hover {
-      background: #f8fafc; transform: scale(1.005);
+      background: linear-gradient(135deg, rgba(44,94,46,0.03), rgba(13,202,240,0.03));
+      transform: scale(1.005);
     }
-    .table-clickable tr { cursor: pointer; }
     
-    /* Progress Bar in Table */
-    .payment-progress {
-      background: #e9ecef; border-radius: 10px; height: 8px; overflow: hidden; margin: 4px 0;
+    /* Barra de Progresso */
+    .progress-container {
+      width: 100%;
     }
-    .payment-progress-bar {
-      height: 100%; border-radius: 10px; transition: width 0.3s ease;
+    .progress {
+      height: 8px;
+      background: #e9ecef;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+    .progress-bar {
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.5s ease;
     }
     .progress-paid { background: linear-gradient(90deg, #198754, #20c997); }
     .progress-partial { background: linear-gradient(90deg, #ffc107, #ffda6a); }
     .progress-pending { background: linear-gradient(90deg, #dc3545, #ff6b6b); }
+    .progress-text {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
     
     /* Badges */
-    .badge-status { font-weight: 500; padding: 0.4em 0.7em; border-radius: 6px; }
+    .badge {
+      padding: 0.5em 0.8em;
+      font-weight: 500;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
     .badge-paid { background: #d1fae5; color: #065f46; }
-    .badge-pending { background: #fef3c7; color: #92400e; }
     .badge-partial { background: #dbeafe; color: #1e40af; }
+    .badge-pending { background: #fef3c7; color: #92400e; }
     
-    /* Modals */
+    /* Botões */
+    .btn {
+      border-radius: 10px;
+      padding: 0.6rem 1.2rem;
+      font-weight: 500;
+      transition: var(--transition);
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+    .btn-primary { background: var(--primary); }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-success { background: var(--success); }
+    .btn-warning { background: var(--warning); color: #212529; }
+    .btn-danger { background: var(--danger); }
+    .btn-outline-primary {
+      border: 2px solid var(--primary);
+      color: var(--primary);
+      background: transparent;
+    }
+    .btn-outline-primary:hover {
+      background: var(--primary);
+      color: white;
+    }
+    
+    /* Modais */
     .modal-content {
-      border: none; border-radius: 20px; box-shadow: var(--shadow-lg);
+      border: none;
+      border-radius: 20px;
+      box-shadow: var(--shadow-lg);
     }
     .modal-header {
       background: linear-gradient(135deg, var(--primary), var(--primary-light));
-      color: white; border-radius: 20px 20px 0 0 !important; border: none;
-      padding: 1.25rem 1.5rem;
+      color: white;
+      border-radius: 20px 20px 0 0 !important;
+      padding: 1.5rem 2rem;
+      border: none;
     }
-    .modal-title { font-weight: 600; }
-    .modal-body { padding: 1.5rem; }
-    .modal-footer { border: none; padding: 1rem 1.5rem 1.5rem; }
+    .modal-title { font-weight: 600; font-size: 1.25rem; }
+    .modal-body { padding: 2rem; }
+    .modal-footer {
+      border: none;
+      padding: 1rem 2rem 2rem;
+    }
     
     /* Floating Action Buttons */
     .fab-container {
-      position: fixed; bottom: 24px; right: 24px; z-index: 1050;
-      display: flex; flex-direction: column; gap: 12px; align-items: flex-end;
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      z-index: 1050;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: flex-end;
     }
     .fab {
-      width: 56px; height: 56px; border-radius: 50%;
-      background: var(--primary); color: white; border: none;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: var(--shadow-lg); cursor: pointer;
-      transition: var(--transition); font-size: 1.25rem;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-lg);
+      cursor: pointer;
+      transition: var(--transition);
+      font-size: 1.5rem;
+      color: white;
       position: relative;
     }
-    .fab:hover { transform: scale(1.1); background: var(--primary-dark); }
-    .fab-secondary { background: #6c757d; }
-    .fab-secondary:hover { background: #5a6268; }
-    .fab-success { background: #198754; }
-    .fab-success:hover { background: #146c43; }
+    .fab:hover {
+      transform: scale(1.15) rotate(5deg);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    }
+    .fab-primary { background: var(--primary); }
+    .fab-success { background: var(--success); }
+    .fab-warning { background: var(--warning); color: #212529; }
     .fab-label {
-      position: absolute; right: 68px; top: 50%; transform: translateY(-50%);
-      background: #333; color: white; padding: 4px 12px; border-radius: 6px;
-      font-size: 0.8rem; white-space: nowrap; opacity: 0; pointer-events: none;
+      position: absolute;
+      right: 70px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #333;
+      color: white;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
       transition: opacity 0.2s;
     }
     .fab:hover .fab-label { opacity: 1; }
     
-    /* Last Payment Widget */
-    .last-payment-card {
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: white; border-radius: 16px; padding: 1.25rem;
-      box-shadow: var(--shadow); cursor: pointer; transition: var(--transition);
-    }
-    .last-payment-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-    .last-payment-amount { font-size: 1.5rem; font-weight: 700; }
-    .last-payment-meta { opacity: 0.9; font-size: 0.9rem; }
-    
-    /* Detail Modal */
-    .detail-grid { display: grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1rem; }
-    .detail-label { color: #6c757d; font-weight: 500; }
-    .detail-value { font-weight: 600; }
-    
-    /* Search & Filter */
+    /* Search Box */
     .search-box {
-      position: relative; max-width: 300px;
+      position: relative;
+      max-width: 320px;
     }
     .search-box input {
-      padding-left: 2.5rem; border-radius: 10px; border: 1px solid var(--border);
+      padding-left: 2.75rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      transition: var(--transition);
+    }
+    .search-box input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(44,94,46,0.1);
     }
     .search-box i {
-      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-      color: #6c757d;
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+    
+    /* Detail Grid */
+    .detail-grid {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 0.75rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .detail-label {
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+    .detail-value {
+      font-weight: 600;
+      color: #212529;
+    }
+    
+    /* Sections */
+    .section-box { display: none; }
+    .section-box.active {
+      display: block;
+      animation: fadeIn 0.4s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     
     /* Utilities */
     .text-primary { color: var(--primary) !important; }
-    .text-success { color: #198754 !important; }
-    .text-warning { color: #ffc107 !important; }
-    .text-danger { color: #dc3545 !important; }
+    .text-success { color: var(--success) !important; }
+    .text-warning { color: var(--warning) !important; }
+    .text-danger { color: var(--danger) !important; }
+    .text-muted { color: var(--text-muted) !important; }
     .fw-semibold { font-weight: 600 !important; }
     .cursor-pointer { cursor: pointer; }
-    .section-box { display: none; }
-    .section-box.active { display: block; animation: fadeIn 0.3s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     
     /* Responsive */
-    @media (max-width: 768px) {
-      .fab-container { bottom: 16px; right: 16px; }
+    @media (max-width: 992px) {
+      .fab-container { bottom: 20px; right: 20px; }
       .stat-value { font-size: 1.5rem; }
-      .table-responsive { font-size: 0.9rem; }
+      .table-responsive { font-size: 0.85rem; }
+    }
+    @media (max-width: 768px) {
+      .navbar-nav { margin-top: 1rem; }
       .search-box { max-width: 100%; }
+      .detail-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
+<!-- Navbar -->
 <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
   <div class="container">
-    <a class="navbar-brand" href="#"><i class="bi bi-heart-fill me-2"></i>CRM Casamento Perfeito</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+    <a class="navbar-brand" href="#" onclick="showSection('dashboard')">
+      <i class="bi bi-heart-fill"></i>
+      CRM Casamento Perfeito
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="collapse navbar-collapse" id="navMenu">
-      <ul class="navbar-nav ms-auto gap-1">
-        <li class="nav-item"><a class="nav-link active" href="#" data-section="dashboard"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-section="servicos"><i class="bi bi-concierge-bell me-1"></i>Serviços</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-section="fornecedores"><i class="bi bi-people me-1"></i>Fornecedores</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-section="orcamento"><i class="bi bi-calculator me-1"></i>Orçamento</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-section="pagamentos"><i class="bi bi-wallet2 me-1"></i>Pagamentos</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-section="configuracoes"><i class="bi bi-gear me-1"></i>Config</a></li>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <a class="nav-link active" href="#" data-section="dashboard">
+            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" data-section="servicos">
+            <i class="bi bi-concierge-bell me-1"></i>Serviços
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" data-section="fornecedores">
+            <i class="bi bi-people me-1"></i>Fornecedores
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" data-section="orcamento">
+            <i class="bi bi-calculator me-1"></i>Orçamento
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" data-section="pagamentos">
+            <i class="bi bi-wallet2 me-1"></i>Pagamentos
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" data-section="configuracoes">
+            <i class="bi bi-gear me-1"></i>Config
+          </a>
+        </li>
       </ul>
     </div>
   </div>
 </nav>
 
-<main class="container py-4">
+<!-- Main Container -->
+<div class="main-container">
 
   <!-- DASHBOARD -->
   <section id="dashboard" class="section-box active">
     <!-- Stats Grid -->
-    <div class="row g-3 mb-4">
-      <div class="col-md-3">
+    <div class="row g-4 mb-4">
+      <div class="col-xl-3 col-md-6">
         <div class="stat-card" onclick="showSection('orcamento')">
+          <div class="stat-icon"><i class="bi bi-wallet2 text-primary"></i></div>
           <div class="stat-label">Orçamento Total</div>
           <div class="stat-value" id="dash-budget-total">R$ 0,00</div>
-          <small class="text-muted">Clique para detalhes</small>
+          <div class="stat-hint"><i class="bi bi-arrow-right me-1"></i>Clique para detalhes</div>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-xl-3 col-md-6">
         <div class="stat-card bg-success" onclick="showSection('pagamentos')">
+          <div class="stat-icon"><i class="bi bi-check-circle text-success"></i></div>
           <div class="stat-label">Total Pago</div>
           <div class="stat-value" id="dash-paid-total">R$ 0,00</div>
-          <small class="text-white-50">Ver pagamentos</small>
+          <div class="stat-hint"><i class="bi bi-arrow-right me-1"></i>Ver pagamentos</div>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-xl-3 col-md-6">
         <div class="stat-card bg-warning" onclick="showSection('servicos')">
+          <div class="stat-icon"><i class="bi bi-clock text-warning"></i></div>
           <div class="stat-label">Total Pendente</div>
           <div class="stat-value" id="dash-pending-total">R$ 0,00</div>
-          <small class="text-dark">Ver pendências</small>
+          <div class="stat-hint"><i class="bi bi-arrow-right me-1"></i>Ver pendências</div>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-xl-3 col-md-6">
         <div class="stat-card bg-info">
+          <div class="stat-icon"><i class="bi bi-calendar-event text-info"></i></div>
           <div class="stat-label">Dias para o Casamento</div>
           <div class="stat-value" id="dash-days-left">0</div>
-          <small class="text-white-50" id="wedding-date-display">—</small>
+          <div class="stat-hint" id="wedding-date-display">—</div>
         </div>
       </div>
     </div>
 
     <!-- Last Payment + Quick Actions -->
-    <div class="row g-3 mb-4">
-      <div class="col-md-4">
-        <div class="last-payment-card" id="last-payment-widget" onclick="openLastPaymentDetail()">
+    <div class="row g-4 mb-4">
+      <div class="col-lg-4">
+        <div class="last-payment-widget" id="last-payment-widget" onclick="showSection('pagamentos')">
           <div class="d-flex justify-content-between align-items-start">
             <div>
-              <small class="opacity-75">Último Pagamento</small>
+              <div class="last-payment-label">Último Pagamento</div>
               <div class="last-payment-amount" id="last-payment-amount">R$ 0,00</div>
             </div>
-            <i class="bi bi-arrow-right-circle fs-4 opacity-75"></i>
+            <i class="bi bi-arrow-right-circle fs-3 opacity-75"></i>
           </div>
           <div class="last-payment-meta mt-2" id="last-payment-meta">
             Nenhum pagamento registrado
           </div>
         </div>
       </div>
-      <div class="col-md-8">
+      <div class="col-lg-8">
         <div class="card h-100">
-          <div class="card-header"><i class="bi bi-lightning me-2"></i>Ações Rápidas</div>
+          <div class="card-header">
+            <span><i class="bi bi-lightning-charge me-2"></i>Ações Rápidas</span>
+          </div>
           <div class="card-body d-flex flex-wrap gap-2">
-            <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#serviceModal" data-action="new-service">
-              <i class="bi bi-plus-circle me-1"></i> Novo Serviço
+            <button class="btn btn-outline-success" onclick="openModal('service')">
+              <i class="bi bi-plus-circle"></i> Novo Serviço
             </button>
-            <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#supplierModal" data-action="new-supplier">
-              <i class="bi bi-plus-circle me-1"></i> Novo Fornecedor
+            <button class="btn btn-outline-primary" onclick="openModal('supplier')">
+              <i class="bi bi-plus-circle"></i> Novo Fornecedor
             </button>
-            <button class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#paymentModal" data-action="new-payment">
-              <i class="bi bi-currency-dollar me-1"></i> Registrar Pagamento
+            <button class="btn btn-outline-warning" onclick="openModal('payment')">
+              <i class="bi bi-currency-dollar"></i> Registrar Pagamento
             </button>
             <button class="btn btn-outline-info" onclick="exportData()">
-              <i class="bi bi-download me-1"></i> Exportar
+              <i class="bi bi-download"></i> Exportar
             </button>
           </div>
         </div>
@@ -272,30 +560,36 @@
     </div>
 
     <!-- Activity + Upcoming -->
-    <div class="row g-3">
-      <div class="col-md-4">
+    <div class="row g-4">
+      <div class="col-lg-4">
         <div class="card h-100">
-          <div class="card-header"><i class="bi bi-clock-history me-2"></i>Próximos Vencimentos</div>
+          <div class="card-header">
+            <span><i class="bi bi-clock-history me-2"></i>Próximos Vencimentos</span>
+          </div>
           <div class="card-body p-0">
             <ul class="list-group list-group-flush" id="dash-upcoming">
-              <li class="list-group-item text-center text-muted">Carregando...</li>
+              <li class="list-group-item text-center text-muted py-4">Carregando...</li>
             </ul>
           </div>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-lg-4">
         <div class="card h-100">
-          <div class="card-header"><i class="bi bi-activity me-2"></i>Atividade Recente</div>
+          <div class="card-header">
+            <span><i class="bi bi-activity me-2"></i>Atividade Recente</span>
+          </div>
           <div class="card-body p-0">
             <ul class="list-group list-group-flush" id="dash-activity">
-              <li class="list-group-item text-center text-muted">Carregando...</li>
+              <li class="list-group-item text-center text-muted py-4">Carregando...</li>
             </ul>
           </div>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-lg-4">
         <div class="card h-100">
-          <div class="card-header"><i class="bi bi-graph-up me-2"></i>Progresso</div>
+          <div class="card-header">
+            <span><i class="bi bi-graph-up me-2"></i>Progresso do Orçamento</span>
+          </div>
           <div class="card-body">
             <div id="dash-progress" class="text-muted">Carregando...</div>
           </div>
@@ -306,29 +600,29 @@
 
   <!-- SERVIÇOS -->
   <section id="servicos" class="section-box">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-      <h3 class="mb-0"><i class="bi bi-concierge-bell me-2"></i>Serviços Gerais</h3>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+      <h2 class="mb-0"><i class="bi bi-concierge-bell me-2"></i>Serviços Gerais</h2>
       <div class="d-flex gap-2">
         <div class="search-box">
           <i class="bi bi-search"></i>
-          <input type="text" class="form-control form-control-sm" id="search-services" placeholder="Buscar serviço...">
+          <input type="text" class="form-control" id="search-services" placeholder="Buscar serviço...">
         </div>
-        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#serviceModal" data-action="new-service">
+        <button class="btn btn-success" onclick="openModal('service')">
           <i class="bi bi-plus-lg"></i> Adicionar
         </button>
       </div>
     </div>
     <div class="card">
       <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0 table-clickable" id="services-table">
+        <div class="table-container">
+          <table class="table table-hover align-middle mb-0" id="services-table">
             <thead>
               <tr>
                 <th>Serviço</th>
                 <th>Categoria</th>
                 <th class="text-end">Total</th>
                 <th class="text-end">Pago</th>
-                <th style="min-width: 150px;">Progresso</th>
+                <th style="min-width: 180px;">Progresso</th>
                 <th class="text-end">Restante</th>
                 <th>Vencimento</th>
                 <th>Status</th>
@@ -347,53 +641,59 @@
 
   <!-- FORNECEDORES -->
   <section id="fornecedores" class="section-box">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-      <h3 class="mb-0"><i class="bi bi-people me-2"></i>Fornecedores</h3>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+      <h2 class="mb-0"><i class="bi bi-people me-2"></i>Fornecedores</h2>
       <div class="d-flex gap-2">
         <div class="search-box">
           <i class="bi bi-search"></i>
-          <input type="text" class="form-control form-control-sm" id="search-suppliers" placeholder="Buscar fornecedor...">
+          <input type="text" class="form-control" id="search-suppliers" placeholder="Buscar fornecedor...">
         </div>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#supplierModal" data-action="new-supplier">
+        <button class="btn btn-primary" onclick="openModal('supplier')">
           <i class="bi bi-plus-lg"></i> Adicionar
         </button>
       </div>
     </div>
     <div class="row g-3" id="suppliers-container">
-      <div class="col-12 text-center text-muted py-4">Carregando fornecedores...</div>
+      <div class="col-12 text-center text-muted py-5">
+        <i class="bi bi-hourglass-split fs-1 d-block mb-2"></i>
+        Carregando fornecedores...
+      </div>
     </div>
     <div class="text-muted small mt-2" id="suppliers-count">0 registros</div>
   </section>
 
   <!-- ORÇAMENTO -->
   <section id="orcamento" class="section-box">
-    <h3 class="mb-3"><i class="bi bi-calculator me-2"></i>Orçamento Detalhado</h3>
-    <div class="row g-3">
-      <div class="col-md-6">
+    <h2 class="mb-4"><i class="bi bi-calculator me-2"></i>Orçamento Detalhado</h2>
+    <div class="row g-4 mb-4">
+      <div class="col-lg-6">
         <div class="card h-100">
           <div class="card-header">Resumo Financeiro</div>
           <div class="card-body" id="budget-summary">
-            <p class="text-muted">Carregando...</p>
+            <div class="text-center text-muted py-4">Carregando...</div>
           </div>
         </div>
       </div>
-      <div class="col-md-6">
+      <div class="col-lg-6">
         <div class="card h-100">
-          <div class="card-header">Por Categoria</div>
+          <div class="card-header">Distribuição por Categoria</div>
           <div class="card-body" id="budget-categories">
-            <p class="text-muted">Carregando...</p>
+            <div class="text-center text-muted py-4">Carregando...</div>
           </div>
         </div>
       </div>
     </div>
-    <!-- All Entries -->
-    <div class="card mt-3">
+    <div class="card">
       <div class="card-header">Todas as Entradas</div>
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-sm table-hover" id="all-entries-table">
-            <thead><tr><th>Tipo</th><th>Nome</th><th>Categoria</th><th class="text-end">Valor</th><th class="text-end">Pago</th><th>Status</th></tr></thead>
-            <tbody id="all-entries-body"><tr><td colspan="6" class="text-center text-muted">Carregando...</td></tr></tbody>
+      <div class="card-body p-0">
+        <div class="table-container">
+          <table class="table table-sm table-hover mb-0" id="all-entries-table">
+            <thead>
+              <tr><th>Tipo</th><th>Nome</th><th>Categoria</th><th class="text-end">Valor</th><th class="text-end">Pago</th><th>Status</th></tr>
+            </thead>
+            <tbody id="all-entries-body">
+              <tr><td colspan="6" class="text-center text-muted py-4">Carregando...</td></tr>
+            </tbody>
           </table>
         </div>
       </div>
@@ -402,26 +702,31 @@
 
   <!-- PAGAMENTOS -->
   <section id="pagamentos" class="section-box">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-      <h3 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Gestão de Pagamentos</h3>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+      <h2 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Gestão de Pagamentos</h2>
       <div class="d-flex gap-2">
         <div class="search-box">
           <i class="bi bi-search"></i>
-          <input type="text" class="form-control form-control-sm" id="search-payments" placeholder="Buscar pagamento...">
+          <input type="text" class="form-control" id="search-payments" placeholder="Buscar pagamento...">
         </div>
-        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#paymentModal" data-action="new-payment">
+        <button class="btn btn-warning" onclick="openModal('payment')">
           <i class="bi bi-plus-lg"></i> Novo
         </button>
       </div>
     </div>
     <div class="card">
       <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0 table-clickable" id="payments-table">
+        <div class="table-container">
+          <table class="table table-hover align-middle mb-0" id="payments-table">
             <thead>
               <tr>
-                <th>Data</th><th>Descrição</th><th class="text-end">Valor</th>
-                <th>Método</th><th>Status</th><th>Comprovante</th><th class="text-end">Ações</th>
+                <th>Data</th>
+                <th>Descrição</th>
+                <th class="text-end">Valor</th>
+                <th>Método</th>
+                <th>Status</th>
+                <th>Comprovante</th>
+                <th class="text-end">Ações</th>
               </tr>
             </thead>
             <tbody id="payments-table-body">
@@ -436,7 +741,7 @@
 
   <!-- CONFIGURAÇÕES -->
   <section id="configuracoes" class="section-box">
-    <h3 class="mb-3"><i class="bi bi-gear me-2"></i>Configurações do Casamento</h3>
+    <h2 class="mb-4"><i class="bi bi-gear me-2"></i>Configurações do Casamento</h2>
     <div class="card">
       <div class="card-body">
         <form id="settings-form">
@@ -450,15 +755,15 @@
               <input type="date" class="form-control" id="set-wedding-date" required>
             </div>
             <div class="col-md-4">
-              <label class="form-label fw-semibold">Convidados</label>
+              <label class="form-label fw-semibold">Número de Convidados</label>
               <input type="number" class="form-control" id="set-guest-count">
             </div>
             <div class="col-md-4">
-              <label class="form-label fw-semibold">Orçamento (R$)</label>
+              <label class="form-label fw-semibold">Orçamento Total (R$)</label>
               <input type="number" step="0.01" class="form-control" id="set-budget-total">
             </div>
             <div class="col-md-4">
-              <label class="form-label fw-semibold">Tema</label>
+              <label class="form-label fw-semibold">Tema do Casamento</label>
               <input type="text" class="form-control" id="set-theme">
             </div>
             <div class="col-12">
@@ -467,17 +772,21 @@
             </div>
           </div>
           <div class="mt-4 d-flex gap-2">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Salvar</button>
-            <button type="button" class="btn btn-outline-secondary" onclick="loadData()"><i class="bi bi-arrow-clockwise me-1"></i> Recarregar</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i> Salvar Configurações
+            </button>
+            <button type="button" class="btn btn-outline-secondary" onclick="loadData()">
+              <i class="bi bi-arrow-clockwise me-1"></i> Recarregar
+            </button>
           </div>
         </form>
       </div>
     </div>
   </section>
 
-</main>
+</div>
 
-<!-- MODAL: DETALHES (genérico) -->
+<!-- MODAL: DETALHES -->
 <div class="modal fade" id="detailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -489,8 +798,12 @@
         <div class="detail-grid" id="detailContent"></div>
         <hr class="my-3">
         <div class="d-flex gap-2 justify-content-end">
-          <button class="btn btn-outline-primary btn-sm" id="detailEditBtn"><i class="bi bi-pencil me-1"></i>Editar</button>
-          <button class="btn btn-outline-danger btn-sm" id="detailDeleteBtn"><i class="bi bi-trash me-1"></i>Excluir</button>
+          <button class="btn btn-outline-primary btn-sm" id="detailEditBtn">
+            <i class="bi bi-pencil me-1"></i>Editar
+          </button>
+          <button class="btn btn-outline-danger btn-sm" id="detailDeleteBtn">
+            <i class="bi bi-trash me-1"></i>Excluir
+          </button>
         </div>
       </div>
     </div>
@@ -499,7 +812,7 @@
 
 <!-- MODAL: SERVIÇO -->
 <div class="modal fade" id="serviceModal" tabindex="-1">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="serviceModalTitle">Adicionar Serviço</h5>
@@ -508,23 +821,39 @@
       <form id="service-form">
         <input type="hidden" id="svc-id">
         <div class="modal-body">
-          <div class="mb-3"><label class="form-label">Nome do Serviço</label><input type="text" class="form-control" id="svc-name" required></div>
-          <div class="mb-3"><label class="form-label">Categoria</label>
+          <div class="mb-3">
+            <label class="form-label">Nome do Serviço</label>
+            <input type="text" class="form-control" id="svc-name" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Categoria</label>
             <select class="form-select" id="svc-category" required>
               <option value="">Selecione...</option>
-              <option value="vestuario">Vestuário</option><option value="beleza">Beleza</option>
-              <option value="cerimonia">Cerimônia</option><option value="recepcao">Recepção</option>
-              <option value="hospedagem">Hospedagem</option><option value="transporte">Transporte</option>
-              <option value="lua-de-mel">Lua de Mel</option><option value="outros">Outros</option>
+              <option value="vestuario">Vestuário</option>
+              <option value="beleza">Beleza e Maquiagem</option>
+              <option value="cerimonia">Cerimônia</option>
+              <option value="recepcao">Recepção</option>
+              <option value="hospedagem">Hospedagem</option>
+              <option value="transporte">Transporte</option>
+              <option value="outros">Outros</option>
             </select>
           </div>
-          <div class="mb-3"><label class="form-label">Valor Total (R$)</label><input type="number" step="0.01" class="form-control" id="svc-value" required></div>
-          <div class="mb-3"><label class="form-label">Vencimento</label><input type="date" class="form-control" id="svc-due-date"></div>
-          <div class="mb-3"><label class="form-label">Observações</label><textarea class="form-control" id="svc-notes" rows="3"></textarea></div>
+          <div class="mb-3">
+            <label class="form-label">Valor Total (R$)</label>
+            <input type="number" step="0.01" class="form-control" id="svc-value" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Data de Vencimento</label>
+            <input type="date" class="form-control" id="svc-due-date">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Observações</label>
+            <textarea class="form-control" id="svc-notes" rows="3"></textarea>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-success">Salvar</button>
+          <button type="submit" class="btn btn-success">Salvar Serviço</button>
         </div>
       </form>
     </div>
@@ -533,7 +862,7 @@
 
 <!-- MODAL: FORNECEDOR -->
 <div class="modal fade" id="supplierModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="supplierModalTitle">Adicionar Fornecedor</h5>
@@ -543,32 +872,59 @@
         <input type="hidden" id="sup-id">
         <div class="modal-body">
           <div class="row g-3">
-            <div class="col-md-6"><label class="form-label">Categoria</label>
+            <div class="col-md-6">
+              <label class="form-label">Categoria</label>
               <select class="form-select" id="sup-category" required>
                 <option value="">Selecione...</option>
-                <option value="fotografia">Fotógrafos</option><option value="buffet">Buffet</option>
-                <option value="decoracao">Decoração</option><option value="musica">Música</option>
-                <option value="florista">Florista</option><option value="cerimonialista">Cerimonialista</option>
+                <option value="fotografia">Fotógrafos</option>
+                <option value="buffet">Buffet e Doces</option>
+                <option value="decoracao">Decoração</option>
+                <option value="musica">Música e Som</option>
+                <option value="florista">Florista</option>
+                <option value="cerimonialista">Cerimonialista</option>
                 <option value="outros">Outros</option>
               </select>
             </div>
-            <div class="col-md-6"><label class="form-label">Nome</label><input type="text" class="form-control" id="sup-name" required></div>
-            <div class="col-md-4"><label class="form-label">Preço (R$)</label><input type="number" step="0.01" class="form-control" id="sup-price" required></div>
-            <div class="col-md-4"><label class="form-label">Avaliação</label>
+            <div class="col-md-6">
+              <label class="form-label">Nome do Fornecedor</label>
+              <input type="text" class="form-control" id="sup-name" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Valor do Pacote (R$)</label>
+              <input type="number" step="0.01" class="form-control" id="sup-price" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Avaliação</label>
               <select class="form-select" id="sup-rating">
-                <option value="0">—</option><option value="1">⭐</option><option value="2">⭐⭐</option>
-                <option value="3">⭐⭐⭐</option><option value="4">⭐⭐⭐⭐</option><option value="5">⭐⭐⭐⭐⭐</option>
+                <option value="0">Não avaliado</option>
+                <option value="1">⭐</option>
+                <option value="2">⭐⭐</option>
+                <option value="3">⭐⭐⭐</option>
+                <option value="4">⭐⭐⭐⭐</option>
+                <option value="5">⭐⭐⭐⭐⭐</option>
               </select>
             </div>
-            <div class="col-md-4"><label class="form-label">Telefone</label><input type="tel" class="form-control" id="sup-phone"></div>
-            <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" id="sup-email"></div>
-            <div class="col-md-6"><label class="form-label">Descrição</label><textarea class="form-control" id="sup-description" rows="2"></textarea></div>
-            <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="sup-notes" rows="2"></textarea></div>
+            <div class="col-md-4">
+              <label class="form-label">Telefone</label>
+              <input type="tel" class="form-control" id="sup-phone">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-control" id="sup-email">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Descrição do Pacote</label>
+              <textarea class="form-control" id="sup-description" rows="2"></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Observações</label>
+              <textarea class="form-control" id="sup-notes" rows="2"></textarea>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Salvar</button>
+          <button type="submit" class="btn btn-primary">Salvar Fornecedor</button>
         </div>
       </form>
     </div>
@@ -577,7 +933,7 @@
 
 <!-- MODAL: PAGAMENTO -->
 <div class="modal fade" id="paymentModal" tabindex="-1">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Registrar Pagamento</h5>
@@ -585,33 +941,53 @@
       </div>
       <form id="payment-form">
         <div class="modal-body">
-          <div class="mb-3"><label class="form-label">Tipo</label>
+          <div class="mb-3">
+            <label class="form-label">Tipo</label>
             <select class="form-select" id="pay-type" required>
               <option value="">Selecione...</option>
-              <option value="service">Serviço</option><option value="supplier">Fornecedor</option>
+              <option value="service">Serviço</option>
+              <option value="supplier">Fornecedor</option>
             </select>
           </div>
-          <div class="mb-3"><label class="form-label">Item</label>
-            <select class="form-select" id="pay-item" required><option value="">Carregando...</option></select>
+          <div class="mb-3">
+            <label class="form-label">Item</label>
+            <select class="form-select" id="pay-item" required>
+              <option value="">Carregando...</option>
+            </select>
           </div>
           <div class="row g-3">
-            <div class="col-6"><label class="form-label">Valor (R$)</label><input type="number" step="0.01" class="form-control" id="pay-amount" required></div>
-            <div class="col-6"><label class="form-label">Data</label><input type="date" class="form-control" id="pay-date" required></div>
+            <div class="col-6">
+              <label class="form-label">Valor (R$)</label>
+              <input type="number" step="0.01" class="form-control" id="pay-amount" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label">Data do Pagamento</label>
+              <input type="date" class="form-control" id="pay-date" required>
+            </div>
           </div>
-          <div class="mb-3 mt-3"><label class="form-label">Método</label>
+          <div class="mb-3 mt-3">
+            <label class="form-label">Método de Pagamento</label>
             <select class="form-select" id="pay-method" required>
-              <option value="cash">Dinheiro</option><option value="card">Cartão</option>
-              <option value="transfer">Transferência</option><option value="pix">PIX</option>
+              <option value="cash">Dinheiro</option>
+              <option value="card">Cartão</option>
+              <option value="transfer">Transferência</option>
+              <option value="pix">PIX</option>
             </select>
           </div>
           <div class="row g-3">
-            <div class="col-6"><label class="form-label">Comprovante</label><input type="text" class="form-control" id="pay-receipt"></div>
-            <div class="col-6"><label class="form-label">Descrição</label><input type="text" class="form-control" id="pay-description"></div>
+            <div class="col-6">
+              <label class="form-label">Nº do Comprovante</label>
+              <input type="text" class="form-control" id="pay-receipt">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Descrição</label>
+              <input type="text" class="form-control" id="pay-description">
+            </div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-warning">Registrar</button>
+          <button type="submit" class="btn btn-warning">Registrar Pagamento</button>
         </div>
       </form>
     </div>
@@ -624,11 +1000,11 @@
     <i class="bi bi-currency-dollar"></i>
     <span class="fab-label">Pagamento</span>
   </button>
-  <button class="fab fab-secondary" onclick="openModal('supplier')" title="Novo Fornecedor">
+  <button class="fab fab-warning" onclick="openModal('supplier')" title="Novo Fornecedor">
     <i class="bi bi-people"></i>
     <span class="fab-label">Fornecedor</span>
   </button>
-  <button class="fab" onclick="openModal('service')" title="Novo Serviço">
+  <button class="fab fab-primary" onclick="openModal('service')" title="Novo Serviço">
     <i class="bi bi-plus-lg"></i>
     <span class="fab-label">Serviço</span>
   </button>

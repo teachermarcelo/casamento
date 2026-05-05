@@ -575,6 +575,9 @@ function updatePaymentInfo() {
     document.getElementById('info-paid').textContent = formatCurrency(paid);
     document.getElementById('info-remaining').textContent = formatCurrency(remaining);
     
+    // ⚠️ IMPORTANTE: Armazenar valor numérico em data attribute
+    infoBox.dataset.remaining = remaining;
+    
     // Atualizar barra de progresso
     const pct = total > 0 ? (paid / total) * 100 : 0;
     document.getElementById('info-progress').style.width = `${pct}%`;
@@ -841,15 +844,20 @@ async function registerPayment(e) {
   const [type, idStr] = rawItem.split('-');
   const id = parseInt(idStr);
   
-  // CORREÇÃO: Substitui vírgula por ponto para o JS entender o valor
+  // Obter valor do input (aceita tanto vírgula quanto ponto)
   const amountStr = document.getElementById('pay-amount').value.replace(',', '.');
   const amount = parseFloat(amountStr);
 
-  // CORREÇÃO: Limpeza do restante para pegar o valor real (ex: 1000 em vez de 1)
-  const remainingText = document.getElementById('info-remaining').textContent;
-  const remaining = parseFloat(remainingText.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.'));
+  // ✅ CORREÇÃO: Ler do data attribute em vez do texto formatado
+  const infoBox = document.getElementById('payment-info-box');
+  const remaining = parseFloat(infoBox.dataset.remaining || 0);
   
   // Validação
+  if (isNaN(amount) || amount <= 0) {
+    showToast('Valor inválido', 'danger');
+    return;
+  }
+  
   if (amount > remaining) {
     showToast(`Valor excede o restante de ${formatCurrency(remaining)}`, 'danger');
     return;
@@ -877,7 +885,6 @@ async function registerPayment(e) {
     showToast('Erro ao registrar: ' + err.message, 'danger');
   }
 }
-
 async function deletePayment(id) {
   if (!confirm('Excluir pagamento? O saldo será recalculado automaticamente.')) return;
   

@@ -847,11 +847,11 @@ async function registerPayment(e) {
   const [type, idStr] = rawItem.split('-');
   const id = parseInt(idStr);
   
-  // Obter valor do input (aceita tanto vírgula quanto ponto)
+  // Obter valor do input (aceita vírgula ou ponto)
   const amountStr = document.getElementById('pay-amount').value.replace(',', '.');
   const amount = parseFloat(amountStr);
 
-  // ✅ CORREÇÃO: Ler do data attribute em vez do texto formatado
+  // ✅ CORREÇÃO: Ler do data attribute (valor numérico puro)
   const infoBox = document.getElementById('payment-info-box');
   const remaining = parseFloat(infoBox.dataset.remaining || 0);
   
@@ -860,6 +860,34 @@ async function registerPayment(e) {
     showToast('Valor inválido', 'danger');
     return;
   }
+  
+  if (amount > remaining) {
+    showToast(`Valor excede o restante de ${formatCurrency(remaining)}`, 'danger');
+    return;
+  }
+
+  const data = {
+    entity_type: type,
+    entity_id: id,
+    amount: amount,  // ✅ Já é número correto
+    payment_date: document.getElementById('pay-date').value,
+    payment_method: document.getElementById('pay-method').value,
+    description: document.getElementById('pay-description').value || '',
+    receipt_number: document.getElementById('pay-receipt').value || '',
+    status: 'completed'
+  };
+
+  try {
+    const { error } = await supabase.from('payments').insert([data]);
+    if (error) throw error;
+    
+    closeModal('paymentModal');
+    showToast('✅ Pagamento registrado com sucesso!');
+    loadData();
+  } catch (err) {
+    showToast('Erro ao registrar: ' + err.message, 'danger');
+  }
+}
   
   if (amount > remaining) {
     showToast(`Valor excede o restante de ${formatCurrency(remaining)}`, 'danger');

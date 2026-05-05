@@ -21,7 +21,7 @@
       font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
       color: #212529;
       line-height: 1.5;
-      padding-bottom: 80px;
+      padding-bottom: 100px;
     }
     
     /* Navbar */
@@ -73,6 +73,17 @@
     }
     .table-clickable tr { cursor: pointer; }
     
+    /* Progress Bar in Table */
+    .payment-progress {
+      background: #e9ecef; border-radius: 10px; height: 8px; overflow: hidden; margin: 4px 0;
+    }
+    .payment-progress-bar {
+      height: 100%; border-radius: 10px; transition: width 0.3s ease;
+    }
+    .progress-paid { background: linear-gradient(90deg, #198754, #20c997); }
+    .progress-partial { background: linear-gradient(90deg, #ffc107, #ffda6a); }
+    .progress-pending { background: linear-gradient(90deg, #dc3545, #ff6b6b); }
+    
     /* Badges */
     .badge-status { font-weight: 500; padding: 0.4em 0.7em; border-radius: 6px; }
     .badge-paid { background: #d1fae5; color: #065f46; }
@@ -103,6 +114,7 @@
       display: flex; align-items: center; justify-content: center;
       box-shadow: var(--shadow-lg); cursor: pointer;
       transition: var(--transition); font-size: 1.25rem;
+      position: relative;
     }
     .fab:hover { transform: scale(1.1); background: var(--primary-dark); }
     .fab-secondary { background: #6c757d; }
@@ -117,11 +129,6 @@
     }
     .fab:hover .fab-label { opacity: 1; }
     
-    /* Detail Modal */
-    .detail-grid { display: grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1rem; }
-    .detail-label { color: #6c757d; font-weight: 500; }
-    .detail-value { font-weight: 600; }
-    
     /* Last Payment Widget */
     .last-payment-card {
       background: linear-gradient(135deg, #667eea, #764ba2);
@@ -132,16 +139,10 @@
     .last-payment-amount { font-size: 1.5rem; font-weight: 700; }
     .last-payment-meta { opacity: 0.9; font-size: 0.9rem; }
     
-    /* Utilities */
-    .text-primary { color: var(--primary) !important; }
-    .text-success { color: #198754 !important; }
-    .text-warning { color: #ffc107 !important; }
-    .text-danger { color: #dc3545 !important; }
-    .fw-semibold { font-weight: 600 !important; }
-    .cursor-pointer { cursor: pointer; }
-    .section-box { display: none; }
-    .section-box.active { display: block; animation: fadeIn 0.3s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    /* Detail Modal */
+    .detail-grid { display: grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1rem; }
+    .detail-label { color: #6c757d; font-weight: 500; }
+    .detail-value { font-weight: 600; }
     
     /* Search & Filter */
     .search-box {
@@ -155,11 +156,23 @@
       color: #6c757d;
     }
     
+    /* Utilities */
+    .text-primary { color: var(--primary) !important; }
+    .text-success { color: #198754 !important; }
+    .text-warning { color: #ffc107 !important; }
+    .text-danger { color: #dc3545 !important; }
+    .fw-semibold { font-weight: 600 !important; }
+    .cursor-pointer { cursor: pointer; }
+    .section-box { display: none; }
+    .section-box.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
     /* Responsive */
     @media (max-width: 768px) {
       .fab-container { bottom: 16px; right: 16px; }
       .stat-value { font-size: 1.5rem; }
       .table-responsive { font-size: 0.9rem; }
+      .search-box { max-width: 100%; }
     }
   </style>
 </head>
@@ -311,13 +324,19 @@
           <table class="table table-hover align-middle mb-0 table-clickable" id="services-table">
             <thead>
               <tr>
-                <th>Serviço</th><th>Categoria</th><th class="text-end">Total</th>
-                <th class="text-end">Pago</th><th class="text-end">Restante</th>
-                <th>Vencimento</th><th>Status</th><th class="text-end">Ações</th>
+                <th>Serviço</th>
+                <th>Categoria</th>
+                <th class="text-end">Total</th>
+                <th class="text-end">Pago</th>
+                <th style="min-width: 150px;">Progresso</th>
+                <th class="text-end">Restante</th>
+                <th>Vencimento</th>
+                <th>Status</th>
+                <th class="text-end">Ações</th>
               </tr>
             </thead>
             <tbody id="services-table-body">
-              <tr><td colspan="8" class="text-center py-4 text-muted">Carregando serviços...</td></tr>
+              <tr><td colspan="9" class="text-center py-4 text-muted">Carregando serviços...</td></tr>
             </tbody>
           </table>
         </div>
@@ -458,7 +477,7 @@
 
 </main>
 
-<!-- MODAL: DETALHES (genérico para serviços/fornecedores/pagamentos) -->
+<!-- MODAL: DETALHES (genérico) -->
 <div class="modal fade" id="detailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -478,7 +497,7 @@
   </div>
 </div>
 
-<!-- MODAL: SERVIÇO (mantido para compatibilidade) -->
+<!-- MODAL: SERVIÇO -->
 <div class="modal fade" id="serviceModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">

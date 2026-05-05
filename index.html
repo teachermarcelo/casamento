@@ -936,37 +936,70 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Registrar Pagamento</h5>
+        <h5 class="modal-title">💰 Registrar Pagamento</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form id="payment-form">
         <div class="modal-body">
+          <!-- Tipo -->
           <div class="mb-3">
-            <label class="form-label">Tipo</label>
+            <label class="form-label fw-semibold">Tipo</label>
             <select class="form-select" id="pay-type" required>
               <option value="">Selecione...</option>
               <option value="service">Serviço</option>
               <option value="supplier">Fornecedor</option>
             </select>
           </div>
+
+          <!-- Item -->
           <div class="mb-3">
-            <label class="form-label">Item</label>
+            <label class="form-label fw-semibold">Item</label>
             <select class="form-select" id="pay-item" required>
-              <option value="">Carregando...</option>
+              <option value="">Selecione um item</option>
             </select>
           </div>
+
+          <!-- Informações do Item (Dinâmico) -->
+          <div id="payment-info-box" class="mb-3" style="display: none;">
+            <div class="card bg-light border-0">
+              <div class="card-body py-3">
+                <div class="row g-2">
+                  <div class="col-4 text-center">
+                    <small class="text-muted d-block">Total</small>
+                    <strong class="text-primary" id="info-total">R$ 0,00</strong>
+                  </div>
+                  <div class="col-4 text-center">
+                    <small class="text-muted d-block">Já Pago</small>
+                    <strong class="text-success" id="info-paid">R$ 0,00</strong>
+                  </div>
+                  <div class="col-4 text-center">
+                    <small class="text-muted d-block">Restante</small>
+                    <strong class="text-danger" id="info-remaining">R$ 0,00</strong>
+                  </div>
+                </div>
+                <div class="progress mt-2" style="height: 6px;">
+                  <div class="progress-bar bg-success" id="info-progress" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Valor e Data -->
           <div class="row g-3">
             <div class="col-6">
-              <label class="form-label">Valor (R$)</label>
+              <label class="form-label fw-semibold">Valor do Pagamento (R$)</label>
               <input type="number" step="0.01" class="form-control" id="pay-amount" required>
+              <small class="text-muted" id="pay-amount-hint"></small>
             </div>
             <div class="col-6">
-              <label class="form-label">Data do Pagamento</label>
+              <label class="form-label fw-semibold">Data do Pagamento</label>
               <input type="date" class="form-control" id="pay-date" required>
             </div>
           </div>
+
+          <!-- Método -->
           <div class="mb-3 mt-3">
-            <label class="form-label">Método de Pagamento</label>
+            <label class="form-label fw-semibold">Método de Pagamento</label>
             <select class="form-select" id="pay-method" required>
               <option value="cash">Dinheiro</option>
               <option value="card">Cartão</option>
@@ -974,20 +1007,22 @@
               <option value="pix">PIX</option>
             </select>
           </div>
+
+          <!-- Comprovante e Descrição -->
           <div class="row g-3">
             <div class="col-6">
               <label class="form-label">Nº do Comprovante</label>
-              <input type="text" class="form-control" id="pay-receipt">
+              <input type="text" class="form-control" id="pay-receipt" placeholder="Opcional">
             </div>
             <div class="col-6">
               <label class="form-label">Descrição</label>
-              <input type="text" class="form-control" id="pay-description">
+              <input type="text" class="form-control" id="pay-description" placeholder="Ex: 1ª parcela">
             </div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-warning">Registrar Pagamento</button>
+          <button type="submit" class="btn btn-success">💵 Registrar Pagamento</button>
         </div>
       </form>
     </div>

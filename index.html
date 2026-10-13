@@ -766,7 +766,7 @@
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
       <div>
         <h2 class="mb-1"><i class="bi bi-grid-3x3-gap me-2"></i>Mesas e Convidados</h2>
-        <p class="text-muted mb-0">Organize os convidados, distribua as mesas e acompanhe as confirmações em um só lugar.</p>
+        <p class="text-muted mb-0">Organize convidados e equipe, distribua manualmente as mesas de oito lugares e acompanhe as confirmações.</p>
       </div>
       <div class="d-flex gap-2 no-print">
         <button class="btn btn-success" type="button" onclick="downloadSeatingPDF()"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar PDF</button><button class="btn btn-outline-primary" type="button" onclick="printSeating()"><i class="bi bi-printer me-1"></i>Imprimir lista</button>
@@ -775,7 +775,7 @@
     </div>
 
     <div class="row g-3 mb-4">
-      <div class="col-6 col-lg-3"><div class="seating-stat"><div class="seating-muted">Convidados cadastrados</div><div class="number" id="seat-total-guests">0</div></div></div>
+      <div class="col-6 col-lg-3"><div class="seating-stat"><div class="seating-muted">Pessoas cadastradas</div><div class="number" id="seat-total-guests">0</div></div></div>
       <div class="col-6 col-lg-3"><div class="seating-stat" style="border-left-color:#198754"><div class="seating-muted">Com mesa definida</div><div class="number" id="seat-assigned">0</div></div></div>
       <div class="col-6 col-lg-3"><div class="seating-stat" style="border-left-color:#ffc107"><div class="seating-muted">Sem mesa</div><div class="number" id="seat-unassigned">0</div></div></div>
       <div class="col-6 col-lg-3"><div class="seating-stat" style="border-left-color:#0dcaf0"><div class="seating-muted">Mesas cadastradas</div><div class="number" id="seat-total-tables">0</div></div></div>
@@ -806,7 +806,7 @@
       </div>
       <div class="col-lg-7">
         <div class="card h-100">
-          <div class="card-header"><span><i class="bi bi-person-plus me-2"></i><span id="seat-guest-form-title">Adicionar convidado</span></span><button class="btn btn-sm btn-light" type="button" onclick="resetWeddingGuestForm()">Limpar</button></div>
+          <div class="card-header"><span><i class="bi bi-person-plus me-2"></i><span id="seat-guest-form-title">Adicionar pessoa</span></span><button class="btn btn-sm btn-light" type="button" onclick="resetWeddingGuestForm()">Limpar</button></div>
           <div class="card-body">
             <form id="wedding-guest-form">
               <input type="hidden" id="seat-guest-id">
@@ -818,7 +818,7 @@
                 <div class="col-md-4"><label class="form-label">Mesa</label><select class="form-select" id="seat-guest-table"><option value="">Ainda sem mesa</option></select></div>
                 <div class="col-12"><label class="form-label">Observações (opcional)</label><input class="form-control" id="seat-guest-notes" maxlength="500" placeholder="Ex.: criança, restrição alimentar (se necessário)"></div>
               </div>
-              <button class="btn btn-primary w-100 mt-3" type="submit"><i class="bi bi-save me-1"></i>Salvar convidado</button>
+              <button class="btn btn-primary w-100 mt-3" type="submit"><i class="bi bi-save me-1"></i>Salvar pessoa</button>
             </form>
           </div>
         </div>
@@ -832,7 +832,7 @@
 
     <div class="card">
       <div class="card-header flex-wrap gap-2">
-        <span><i class="bi bi-people me-2"></i>Lista de convidados</span>
+        <span><i class="bi bi-people me-2"></i>Lista de pessoas</span>
         <div class="d-flex gap-2 flex-wrap no-print">
           <input class="form-control form-control-sm" id="seat-guest-search" placeholder="Buscar nome ou família..." aria-label="Buscar convidado">
           <select class="form-select form-select-sm" id="seat-guest-filter" aria-label="Filtrar convidados" style="max-width:190px">

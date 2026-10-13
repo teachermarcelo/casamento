@@ -450,7 +450,15 @@
     @media(max-width:992px){.seating-overview{grid-template-columns:repeat(2,minmax(0,1fr));}}
     @media(max-width:440px){.seating-overview{grid-template-columns:1fr 1fr;gap:8px}.seating-stat{padding:.8rem;min-height:135px}.seating-stat .number{font-size:1.6rem}}
     .seat-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.5rem; }
-    .seat-position-button{width:100%;text-align:left;font:inherit;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+    .guest-autocomplete-wrap{position:relative}
+.guest-suggestions{position:absolute;z-index:1050;top:100%;left:calc(var(--bs-gutter-x,1.5rem)*.5);right:calc(var(--bs-gutter-x,1.5rem)*.5);max-height:260px;overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 12px 30px rgba(15,23,42,.18);margin-top:4px}
+.guest-suggestion{display:block;width:100%;padding:10px 12px;border:0;border-bottom:1px solid #eef2f7;background:#fff;text-align:left;color:#1e293b}
+.guest-suggestion:last-child{border-bottom:0}
+.guest-suggestion:hover,.guest-suggestion:focus{background:#edf8f0;outline:0}
+.guest-suggestion strong{display:block;font-size:.92rem}
+.guest-suggestion small{display:block;color:#64748b;margin-top:2px}
+.guest-suggestion-new{padding:10px 12px;background:#f8fafc;color:#198754;font-size:.85rem}
+.seat-position-button{width:100%;text-align:left;font:inherit;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
 .seat-position-button:hover,.seat-position-button:focus-visible{transform:translateY(-2px);box-shadow:0 4px 12px rgba(25,135,84,.13);outline:2px solid rgba(25,135,84,.35);outline-offset:1px}
 .seat-position-button.seat-free{background:#f8fafc;border:1px dashed #b8c7d8}
 .seat-position-button.seat-free:hover{background:#eaf7ee;border-color:#198754}
@@ -839,7 +847,7 @@
             <form id="wedding-guest-form">
               <input type="hidden" id="seat-guest-id">
               <div class="row g-3">
-                <div class="col-md-6"><label class="form-label">Nome completo</label><input class="form-control" id="seat-guest-name" required maxlength="160" placeholder="Nome do convidado"></div>
+                <div class="col-md-6 guest-autocomplete-wrap"><label class="form-label">Nome completo</label><input class="form-control" id="seat-guest-name" required maxlength="160" placeholder="Digite para buscar ou cadastrar..." autocomplete="off" aria-autocomplete="list" aria-controls="seat-guest-suggestions"><div id="seat-guest-suggestions" class="guest-suggestions" role="listbox" hidden></div><small class="text-muted">Digite para localizar alguém já cadastrado e evitar duplicatas.</small></div>
                 <div class="col-md-6"><label class="form-label">Família / grupo</label><input class="form-control" id="seat-guest-household" maxlength="120" placeholder="Ex.: família Silva"></div>
                 <div class="col-md-4"><label class="form-label">Categoria</label><select class="form-select" id="seat-guest-category" required><option value="convidado">Convidado</option><option value="familia">Família</option><option value="fotografia">Fotografia</option><option value="cerimonial">Cerimonialista</option><option value="story_maker">Story maker</option><option value="som">Som / técnica</option><option value="musica">Música</option><option value="celebrante">Celebrante / ministro</option><option value="outro">Outro</option></select></div>
                 <div class="col-md-4"><label class="form-label">Confirmação</label><select class="form-select" id="seat-guest-rsvp"><option value="pendente">Pendente de confirmação</option><option value="nao_confirmado">Não confirmado (marcação especial)</option><option value="confirmado">Confirmado</option><option value="recusado">Não vai</option></select></div>
@@ -1193,6 +1201,6 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="js/config.js"></script>
-<script src="js/app.js?v=20261013-seat-click-3"></script>
+<script src="js/app.js?v=20261013-guest-autocomplete-4"></script>
 </body>
 </html>

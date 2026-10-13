@@ -742,8 +742,16 @@ function initSearch() {
 function seatEscape(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 }
+function normalizeSeatStatus(status) {
+  const value = String(status ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s-]+/g, '_');
+  if (['confirmado','confirmed','sim','yes'].includes(value)) return 'confirmado';
+  if (['nao_confirmado','naoconfirmado','not_confirmed','unconfirmed'].includes(value)) return 'nao_confirmado';
+  if (['recusado','rejeitado','declined','no'].includes(value)) return 'recusado';
+  return 'pendente';
+}
 function seatStatusLabel(status) {
-  return status === 'confirmado' ? 'Confirmado' : status === 'recusado' ? 'Não vai' : status === 'nao_confirmado' ? 'Não confirmado' : 'Pendente de confirmação';
+  const normalized = normalizeSeatStatus(status);
+  return normalized === 'confirmado' ? 'Confirmado' : normalized === 'recusado' ? 'Não vai' : normalized === 'nao_confirmado' ? 'Não confirmado' : 'Pendente de confirmação';
 }
 function seatTableLabel(table) {
   if (!table) return 'Sem mesa';
@@ -780,7 +788,7 @@ async function loadSeatingData() {
 function renderSeating() {
   const tables = seatingState.tables, guests = seatingState.guests;
   const assigned = guests.filter(g => g.table_id !== null && g.table_id !== undefined).length;
-  const countStatus = status => guests.filter(g => g.rsvp_status === status).length;
+  const countStatus = status => guests.filter(g => normalizeSeatStatus(g.rsvp_status) === status).length;
   const put = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
   put('seat-total-guests', guests.length);
   put('seat-confirmed', countStatus('confirmado'));
@@ -854,7 +862,7 @@ function renderWeddingGuests() {
     const table = seatingState.tables.find(t => String(t.id) === String(g.table_id));
     const searchable = [g.full_name,g.household,seatTableLabel(table),seatCategoryLabel(g.category),seatStatusLabel(g.rsvp_status),g.notes,g.category].join(' ').toLocaleLowerCase('pt-BR');
     const matchesSearch = searchable.includes(search);
-    const matchesFilter = filter === 'todos' || (filter === 'sem-mesa' ? !g.table_id : filter === 'com-mesa' ? !!g.table_id : g.rsvp_status === filter);
+    const matchesFilter = filter === 'todos' || (filter === 'sem-mesa' ? !g.table_id : filter === 'com-mesa' ? !!g.table_id : normalizeSeatStatus(g.rsvp_status) === filter);
     const matchesCategory = categoryFilter === 'todos' || (g.category || 'convidado') === categoryFilter;
     return matchesSearch && matchesFilter && matchesCategory;
   });
@@ -862,13 +870,13 @@ function renderWeddingGuests() {
     const table = seatingState.tables.find(t => String(t.id) === String(g.table_id));
     const color = table?.color || '#adb5bd';
     const typeMismatch = table && ((table.table_type === 'staff') !== seatIsStaff(g.category || 'convidado'));
-    const detailText = [g.notes || 'Sem observações', g.rsvp_status === 'pendente' ? 'Precisa de confirmação' : ''].filter(Boolean).join(' · ');
+    const detailText = [g.notes || 'Sem observações', normalizeSeatStatus(g.rsvp_status) === 'pendente' ? 'Precisa de confirmação' : ''].filter(Boolean).join(' · ');
     return '<tr class="guest-row" style="--table-color:' + seatEscape(color) + '"><td><strong>' + seatEscape(g.full_name) + '</strong></td><td>' + seatEscape(seatCategoryLabel(g.category)) + '</td><td>' + seatEscape(g.household || '—') + '</td><td>' + (table ? '<span class="table-color-dot me-1" style="background:' + seatEscape(color) + '"></span>' + seatEscape(seatTableLabel(table)) + (typeMismatch ? ' <span class="badge bg-danger">Tipo incompatível</span>' : '') : '<span class="badge bg-warning text-dark">Sem mesa</span>') + '</td><td><span class="badge ' + seatStatusClass(g.rsvp_status) + '">' + seatStatusLabel(g.rsvp_status) + '</span></td><td class="guest-detail">' + seatEscape(detailText) + '</td><td class="no-print"><button class="btn btn-sm btn-outline-primary me-1" title="Editar pessoa" onclick="editWeddingGuest(' + g.id + ')"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" title="Excluir pessoa" onclick="deleteWeddingGuest(' + g.id + ')"><i class="bi bi-trash"></i></button></td></tr>';
   }).join('') : '<tr><td colspan="7" class="text-center text-muted py-4">Nenhuma pessoa encontrada.</td></tr>';
   const summary = document.getElementById('seat-guest-summary');
   if (summary) summary.textContent = guests.length + ' exibido(s) de ' + seatingState.guests.length + ' pessoas';
   const details = document.getElementById('seat-guest-summary-detail');
-  if (details) details.textContent = seatingState.guests.filter(g=>g.rsvp_status==='pendente').length + ' aguardando confirmação · ' + seatingState.guests.filter(g=>!g.table_id).length + ' sem mesa';
+  if (details) details.textContent = seatingState.guests.filter(g=>normalizeSeatStatus(g.rsvp_status)==='pendente').length + ' aguardando confirmação · ' + seatingState.guests.filter(g=>!g.table_id).length + ' sem mesa';
 }
 function resetWeddingTableForm() {
   document.getElementById('wedding-table-form')?.reset();
@@ -890,15 +898,18 @@ function resetWeddingGuestForm() {
 async function saveWeddingTable(event) {
   event.preventDefault();
   const id = document.getElementById('seat-table-id').value;
+  const numberInput = document.getElementById('seat-table-number');
+  const rawTableNumber = String(numberInput?.value ?? '').trim();
+  const parsedTableNumber = rawTableNumber === '' ? NaN : Number(rawTableNumber);
   const data = {
-    table_number: Number(document.getElementById('seat-table-number').value),
+    table_number: parsedTableNumber,
     name: document.getElementById('seat-table-name').value.trim(),
     capacity: 8,
     table_type: document.getElementById('seat-table-type').value || 'convidados',
     color: document.getElementById('seat-table-color').value || '#dcefe0',
     notes: document.getElementById('seat-table-notes').value.trim()
   };
-  if (!Number.isInteger(data.table_number) || data.table_number < 1 || data.table_number > 999) return showToast('Informe um número de mesa válido.', 'warning');
+  if (!Number.isInteger(data.table_number) || data.table_number < 1 || data.table_number > 999) { numberInput?.focus(); return showToast('Informe o número da mesa (de 1 a 999) no campo Número da mesa.', 'warning'); }
   if (seatingState.tables.some(t => Number(t.table_number) === data.table_number && String(t.id) !== String(id))) return showToast('Já existe uma mesa com esse número.', 'warning');
   try {
     const result = id ? await supabase.from('wedding_tables').update(data).eq('id', id) : await supabase.from('wedding_tables').insert([data]);

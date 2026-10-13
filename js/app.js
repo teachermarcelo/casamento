@@ -743,10 +743,16 @@ function seatEscape(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 }
 function seatStatusLabel(status) {
-  return status === 'confirmado' ? 'Confirmado' : status === 'recusado' ? 'Não vai' : 'Pendente';
+  return status === 'confirmado' ? 'Confirmado' : status === 'recusado' ? 'Não vai' : status === 'nao_confirmado' ? 'Não confirmado' : 'Pendente';
 }
 function seatStatusClass(status) {
-  return status === 'confirmado' ? 'bg-success' : status === 'recusado' ? 'bg-secondary' : 'bg-warning text-dark';
+  return status === 'confirmado' ? 'bg-success' : status === 'recusado' ? 'bg-secondary' : status === 'nao_confirmado' ? 'bg-danger' : 'bg-warning text-dark';
+}
+function seatCategoryLabel(category) {
+  return ({convidado:'Convidado',familia:'Família',fotografia:'Fotografia',cerimonial:'Cerimonialista',story_maker:'Story maker',som:'Som / técnica',musica:'Música',celebrante:'Celebrante / ministro',outro:'Outro'})[category] || 'Convidado';
+}
+function seatIsStaff(category) {
+  return ['fotografia','cerimonial','story_maker','som','musica','celebrante'].includes(category);
 }
 async function loadSeatingData() {
   const tablesEl = document.getElementById('seat-tables-container');
@@ -754,7 +760,7 @@ async function loadSeatingData() {
   try {
     const [tablesRes, guestsRes] = await Promise.all([
       supabase.from('wedding_tables').select('*').order('name', { ascending: true }),
-      supabase.from('wedding_guests').select('*').order('full_name', { ascending: true })
+      supabase.from('wedding_guests').select('*').order('id', { ascending: true })
     ]);
     if (tablesRes.error) throw tablesRes.error;
     if (guestsRes.error) throw guestsRes.error;
@@ -778,7 +784,7 @@ function renderSeating() {
   const select = document.getElementById('seat-guest-table');
   if (select) {
     const selected = select.value;
-    select.innerHTML = '<option value="">Ainda sem mesa</option>' + tables.map(t => '<option value="' + t.id + '">' + seatEscape(t.name) + '</option>').join('');
+    select.innerHTML = '<option value="">Ainda sem mesa</option>' + tables.map(t => '<option value="' + t.id + '">' + seatEscape(t.name) + ' · ' + (t.table_type === 'staff' ? 'Staff' : 'Convidados') + '</option>').join('');
     if (selected && tables.some(t => String(t.id) === selected)) select.value = selected;
   }
   const tableContainer = document.getElementById('seat-tables-container');
@@ -786,13 +792,20 @@ function renderSeating() {
     tableContainer.innerHTML = tables.length ? tables.map(t => {
       const group = guests.filter(g => String(g.table_id) === String(t.id));
       const confirmed = group.filter(g => g.rsvp_status === 'confirmado').length;
-      const full = group.length >= Number(t.capacity);
+      const full = group.length >= 8;
+      const seatTiles = Array.from({length:8}, (_,i) => {
+        const guest = group[i];
+        return '<div class="seat-position ' + (guest ? 'seat-filled' : 'seat-free') + '"><small>Lugar ' + (i+1) + '</small><span>' + (guest ? seatEscape(guest.full_name) : '<em>Livre</em>') + '</span></div>';
+      }).join('');
+      const typeLabel = t.table_type === 'staff' ? 'Staff / equipe' : 'Convidados';
+      const overflow = group.length > 8 ? '<div class="alert alert-danger py-2 mt-2 mb-0">Atenção: há mais de 8 pessoas nesta mesa. Ajuste a distribuição.</div>' : '';
       return '<div class="col-sm-6 col-xl-4"><div class="card seating-table-card h-100" style="--table-color:' + seatEscape(t.color || '#2c5e2e') + '">' +
-        '<div class="card-body"><div class="d-flex justify-content-between align-items-start gap-2"><div><span class="table-color-dot me-1" style="background:' + seatEscape(t.color || '#dcefe0') + '"></span><h5 class="d-inline card-title">' + seatEscape(t.name) + '</h5></div><span class="badge ' + (full ? 'bg-danger' : 'bg-success') + '">' + group.length + '/' + Number(t.capacity) + '</span></div>' +
-        '<div class="progress my-3"><div class="progress-bar ' + (full ? 'bg-danger' : 'bg-success') + '" style="width:' + Math.min(100, group.length / Number(t.capacity) * 100) + '%"></div></div>' +
-        '<div class="seating-muted mb-3">' + confirmed + ' confirmado(s) · ' + (group.length - confirmed) + ' outros' + (t.notes ? '<br>' + seatEscape(t.notes) : '') + '</div>' +
-        '<div class="d-flex gap-2 flex-wrap no-print"><button class="btn btn-sm btn-outline-primary" onclick="editWeddingTable(' + t.id + ')"><i class="bi bi-pencil me-1"></i>Editar</button><button class="btn btn-sm btn-outline-secondary" onclick="filterGuestsByTable(' + t.id + ')"><i class="bi bi-people me-1"></i>Ver convidados</button><button class="btn btn-sm btn-outline-danger" onclick="deleteWeddingTable(' + t.id + ')"><i class="bi bi-trash"></i></button></div></div></div></div>';
-    }).join('') : '<div class="col-12 text-center text-muted py-4"><i class="bi bi-grid fs-2 d-block mb-2"></i>Nenhuma mesa cadastrada. Adicione a primeira acima.</div>';
+        '<div class="card-body"><div class="d-flex justify-content-between align-items-start gap-2"><div><span class="table-color-dot me-1" style="background:' + seatEscape(t.color || '#dcefe0') + '"></span><h5 class="d-inline card-title">' + seatEscape(t.name) + '</h5><div class="mt-2"><span class="badge ' + (t.table_type === 'staff' ? 'bg-info text-dark' : 'bg-light text-dark') + '">' + typeLabel + '</span></div></div><span class="badge ' + (full ? 'bg-danger' : 'bg-success') + '">' + group.length + '/8</span></div>' +
+        '<div class="progress my-3"><div class="progress-bar ' + (full ? 'bg-danger' : 'bg-success') + '" style="width:' + Math.min(100, group.length / 8 * 100) + '%"></div></div>' +
+        '<div class="seat-grid mb-3">' + seatTiles + '</div>' +
+        '<div class="seating-muted mb-3">' + confirmed + ' confirmado(s) · ' + group.filter(g => g.rsvp_status !== 'confirmado').length + ' pendente(s)' + (t.notes ? '<br>' + seatEscape(t.notes) : '') + '</div>' + overflow +
+        '<div class="d-flex gap-2 flex-wrap no-print mt-3"><button class="btn btn-sm btn-outline-primary" onclick="editWeddingTable(' + t.id + ')"><i class="bi bi-pencil me-1"></i>Editar</button><button class="btn btn-sm btn-outline-secondary" onclick="filterGuestsByTable(' + t.id + ')"><i class="bi bi-people me-1"></i>Ver lista</button><button class="btn btn-sm btn-outline-danger" onclick="deleteWeddingTable(' + t.id + ')"><i class="bi bi-trash"></i></button></div></div></div></div>';
+    }).join('') : '<div class="col-12 text-center text-muted py-4"><i class="bi bi-grid fs-2 d-block mb-2"></i>Nenhuma mesa cadastrada. Crie uma mesa de convidados ou de staff acima.</div>';
   }
   renderWeddingGuests();
 }
@@ -801,25 +814,29 @@ function renderWeddingGuests() {
   if (!container) return;
   const search = (document.getElementById('seat-guest-search')?.value || '').trim().toLocaleLowerCase('pt-BR');
   const filter = document.getElementById('seat-guest-filter')?.value || 'todos';
+  const categoryFilter = document.getElementById('seat-category-filter')?.value || 'todos';
   const guests = seatingState.guests.filter(g => {
     const table = seatingState.tables.find(t => String(t.id) === String(g.table_id));
-    const matchesSearch = [g.full_name, g.household, table?.name].some(v => String(v || '').toLocaleLowerCase('pt-BR').includes(search));
+    const matchesSearch = [g.full_name, g.household, table?.name, seatCategoryLabel(g.category)].some(v => String(v || '').toLocaleLowerCase('pt-BR').includes(search));
     const matchesFilter = filter === 'todos' || (filter === 'sem-mesa' ? !g.table_id : g.rsvp_status === filter);
-    return matchesSearch && matchesFilter;
+    const matchesCategory = categoryFilter === 'todos' || (g.category || 'convidado') === categoryFilter;
+    return matchesSearch && matchesFilter && matchesCategory;
   });
   container.innerHTML = guests.length ? guests.map(g => {
     const table = seatingState.tables.find(t => String(t.id) === String(g.table_id));
     const color = table?.color || '#adb5bd';
-    return '<tr class="guest-row" style="--table-color:' + seatEscape(color) + '"><td><strong>' + seatEscape(g.full_name) + '</strong>' + (g.notes ? '<br><small class="text-muted">' + seatEscape(g.notes) + '</small>' : '') + '</td><td>' + seatEscape(g.household || '—') + '</td><td>' + (table ? '<span class="table-color-dot me-1" style="background:' + seatEscape(color) + '"></span>' + seatEscape(table.name) : '<span class="badge bg-warning text-dark">Sem mesa</span>') + '</td><td><span class="badge ' + seatStatusClass(g.rsvp_status) + '">' + seatStatusLabel(g.rsvp_status) + '</span></td><td class="no-print"><button class="btn btn-sm btn-outline-primary me-1" title="Editar" onclick="editWeddingGuest(' + g.id + ')"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" title="Excluir" onclick="deleteWeddingGuest(' + g.id + ')"><i class="bi bi-trash"></i></button></td></tr>';
-  }).join('') : '<tr><td colspan="5" class="text-center text-muted py-4">Nenhum convidado encontrado.</td></tr>';
+    const typeMismatch = table && ((table.table_type === 'staff') !== seatIsStaff(g.category || 'convidado'));
+    return '<tr class="guest-row" style="--table-color:' + seatEscape(color) + '"><td><strong>' + seatEscape(g.full_name) + '</strong>' + (g.notes ? '<br><small class="text-muted">' + seatEscape(g.notes) + '</small>' : '') + '</td><td>' + seatEscape(seatCategoryLabel(g.category)) + '</td><td>' + seatEscape(g.household || '—') + '</td><td>' + (table ? '<span class="table-color-dot me-1" style="background:' + seatEscape(color) + '"></span>' + seatEscape(table.name) + (typeMismatch ? ' <span class="badge bg-danger">Tipo incompatível</span>' : '') : '<span class="badge bg-warning text-dark">Sem mesa</span>') + '</td><td><span class="badge ' + seatStatusClass(g.rsvp_status) + '">' + seatStatusLabel(g.rsvp_status) + '</span></td><td class="no-print"><button class="btn btn-sm btn-outline-primary me-1" title="Editar" onclick="editWeddingGuest(' + g.id + ')"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" title="Excluir" onclick="deleteWeddingGuest(' + g.id + ')"><i class="bi bi-trash"></i></button></td></tr>';
+  }).join('') : '<tr><td colspan="6" class="text-center text-muted py-4">Nenhuma pessoa encontrada.</td></tr>';
   const total = seatingState.guests.length;
   const summary = document.getElementById('seat-guest-summary');
-  if (summary) summary.textContent = guests.length + ' exibido(s) de ' + total + ' convidado(s)';
+  if (summary) summary.textContent = guests.length + ' exibido(s) de ' + total + ' pessoa(s)';
 }
 function resetWeddingTableForm() {
   document.getElementById('wedding-table-form')?.reset();
   document.getElementById('seat-table-id').value = '';
   document.getElementById('seat-table-capacity').value = 8;
+  document.getElementById('seat-table-type').value = 'convidados';
   document.getElementById('seat-table-color').value = '#dcefe0';
   document.getElementById('seat-table-form-title').textContent = 'Adicionar mesa';
 }
@@ -827,6 +844,7 @@ function resetWeddingGuestForm() {
   document.getElementById('wedding-guest-form')?.reset();
   document.getElementById('seat-guest-id').value = '';
   document.getElementById('seat-guest-rsvp').value = 'pendente';
+  document.getElementById('seat-guest-category').value = 'convidado';
   document.getElementById('seat-guest-table').value = '';
   document.getElementById('seat-guest-form-title').textContent = 'Adicionar convidado';
 }
@@ -835,11 +853,12 @@ async function saveWeddingTable(event) {
   const id = document.getElementById('seat-table-id').value;
   const data = {
     name: document.getElementById('seat-table-name').value.trim(),
-    capacity: Number(document.getElementById('seat-table-capacity').value),
+    capacity: 8,
+    table_type: document.getElementById('seat-table-type').value || 'convidados',
     color: document.getElementById('seat-table-color').value || '#dcefe0',
     notes: document.getElementById('seat-table-notes').value.trim()
   };
-  if (!data.name || !Number.isInteger(data.capacity) || data.capacity < 1) return showToast('Informe nome e capacidade válida para a mesa.', 'warning');
+  if (!data.name) return showToast('Informe o nome da mesa.', 'warning');
   try {
     const result = id ? await supabase.from('wedding_tables').update(data).eq('id', id) : await supabase.from('wedding_tables').insert([data]);
     if (result.error) throw result.error;
@@ -856,10 +875,19 @@ async function saveWeddingGuest(event) {
     full_name: document.getElementById('seat-guest-name').value.trim(),
     household: document.getElementById('seat-guest-household').value.trim(),
     rsvp_status: document.getElementById('seat-guest-rsvp').value,
+    category: document.getElementById('seat-guest-category').value || 'convidado',
     table_id: tableValue ? Number(tableValue) : null,
     notes: document.getElementById('seat-guest-notes').value.trim()
   };
-  if (!data.full_name) return showToast('Informe o nome do convidado.', 'warning');
+  if (!data.full_name) return showToast('Informe o nome da pessoa.', 'warning');
+  const selectedTable = seatingState.tables.find(t => String(t.id) === String(data.table_id));
+  if (selectedTable && ((selectedTable.table_type === 'staff') !== seatIsStaff(data.category))) {
+    return showToast('Esta categoria deve ficar em uma mesa de ' + (seatIsStaff(data.category) ? 'staff/equipe.' : 'convidados.'), 'warning');
+  }
+  if (selectedTable) {
+    const currentOccupancy = seatingState.guests.filter(g => String(g.table_id) === String(selectedTable.id) && String(g.id) !== String(id)).length;
+    if (currentOccupancy >= 8) return showToast('Esta mesa já tem 8 pessoas. Escolha outra mesa.', 'warning');
+  }
   try {
     const result = id ? await supabase.from('wedding_guests').update(data).eq('id', id) : await supabase.from('wedding_guests').insert([data]);
     if (result.error) throw result.error;
@@ -873,7 +901,8 @@ function editWeddingTable(id) {
   if (!t) return;
   document.getElementById('seat-table-id').value = t.id;
   document.getElementById('seat-table-name').value = t.name || '';
-  document.getElementById('seat-table-capacity').value = t.capacity || 8;
+  document.getElementById('seat-table-capacity').value = 8;
+  document.getElementById('seat-table-type').value = t.table_type || 'convidados';
   document.getElementById('seat-table-color').value = t.color || '#dcefe0';
   document.getElementById('seat-table-notes').value = t.notes || '';
   document.getElementById('seat-table-form-title').textContent = 'Editar mesa';
@@ -886,6 +915,7 @@ function editWeddingGuest(id) {
   document.getElementById('seat-guest-name').value = g.full_name || '';
   document.getElementById('seat-guest-household').value = g.household || '';
   document.getElementById('seat-guest-rsvp').value = g.rsvp_status || 'pendente';
+  document.getElementById('seat-guest-category').value = g.category || 'convidado';
   document.getElementById('seat-guest-table').value = g.table_id == null ? '' : String(g.table_id);
   document.getElementById('seat-guest-notes').value = g.notes || '';
   document.getElementById('seat-guest-form-title').textContent = 'Editar convidado';
@@ -922,6 +952,47 @@ function filterGuestsByTable(id) {
   document.getElementById('seat-guests-container')?.closest('.card')?.scrollIntoView({behavior:'smooth', block:'start'});
 }
 function printSeating() { window.print(); }
+function downloadSeatingPDF() {
+  const JsPDF = window.jspdf?.jsPDF;
+  if (!JsPDF) return showToast('O gerador de PDF não carregou. Atualize a página e tente novamente.', 'danger');
+  const doc = new JsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  const date = new Date().toLocaleDateString('pt-BR');
+  doc.setFontSize(18);
+  doc.text('Mesas e Convidados - Casamento', 14, 18);
+  doc.setFontSize(10);
+  doc.text('Gerado em ' + date + ' · 8 lugares por mesa', 14, 25);
+  doc.text('Pessoas: ' + seatingState.guests.length + ' · Mesas: ' + seatingState.tables.length + ' · Sem mesa: ' + seatingState.guests.filter(g => !g.table_id).length, 14, 32);
+  let y = 42;
+  seatingState.tables.forEach((table, index) => {
+    const people = seatingState.guests.filter(g => String(g.table_id) === String(table.id));
+    if (y > 250) { doc.addPage(); y = 18; }
+    doc.setFontSize(13);
+    doc.text(table.name + ' — ' + (table.table_type === 'staff' ? 'Staff/equipe' : 'Convidados') + ' (' + people.length + '/8)', 14, y);
+    doc.autoTable({
+      startY: y + 3,
+      head: [['Lugar', 'Nome', 'Categoria', 'Confirmação']],
+      body: Array.from({length:8}, (_,i) => {
+        const person = people[i];
+        return [String(i+1), person?.full_name || 'Livre', person ? seatCategoryLabel(person.category) : '—', person ? seatStatusLabel(person.rsvp_status) : '—'];
+      }),
+      theme: 'grid',
+      styles: {fontSize:8, cellPadding:2},
+      headStyles: {fillColor:[44,94,46]},
+      margin: {left:14,right:14},
+      didDrawPage: () => {}
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  });
+  const unassigned = seatingState.guests.filter(g => !g.table_id);
+  if (unassigned.length) {
+    if (y > 245) { doc.addPage(); y = 18; }
+    doc.setFontSize(13);
+    doc.text('Pessoas sem mesa', 14, y);
+    doc.autoTable({startY:y+3,head:[['Nome','Categoria','Confirmação']],body:unassigned.map(g=>[g.full_name,seatCategoryLabel(g.category),seatStatusLabel(g.rsvp_status)]),theme:'grid',styles:{fontSize:8},headStyles:{fillColor:[44,94,46]},margin:{left:14,right:14}});
+  }
+  doc.save('mesas-e-convidados-casamento.pdf');
+  showToast('PDF gerado para download.');
+}
 
 
 // ==================== INICIALIZAÇÃO ====================
@@ -938,6 +1009,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('wedding-guest-form')?.addEventListener('submit', saveWeddingGuest);
   document.getElementById('seat-guest-search')?.addEventListener('input', renderWeddingGuests);
   document.getElementById('seat-guest-filter')?.addEventListener('change', renderWeddingGuests);
+  document.getElementById('seat-category-filter')?.addEventListener('change', renderWeddingGuests);
   document.getElementById('pay-type')?.addEventListener('change', populatePaymentSelects);
   document.getElementById('btn-new-service')?.addEventListener('click', () => openModal('service'));
   document.getElementById('btn-new-supplier')?.addEventListener('click', () => openModal('supplier'));

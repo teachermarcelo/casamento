@@ -743,7 +743,12 @@ function seatEscape(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 }
 function seatStatusLabel(status) {
-  return status === 'confirmado' ? 'Confirmado' : status === 'recusado' ? 'Não vai' : status === 'nao_confirmado' ? 'Não confirmado' : 'Pendente';
+  return status === 'confirmado' ? 'Confirmado' : status === 'recusado' ? 'Não vai' : status === 'nao_confirmado' ? 'Não confirmado' : 'Pendente de confirmação';
+}
+function seatTableLabel(table) {
+  if (!table) return 'Sem mesa';
+  const number = table.table_number ? 'Mesa ' + table.table_number : 'Mesa';
+  return number + (table.name && table.name.trim() ? ' · ' + table.name.trim() : '');
 }
 function seatStatusClass(status) {
   return status === 'confirmado' ? 'bg-success' : status === 'recusado' ? 'bg-secondary' : status === 'nao_confirmado' ? 'bg-danger' : 'bg-warning text-dark';
@@ -759,7 +764,7 @@ async function loadSeatingData() {
   if (!tablesEl) return;
   try {
     const [tablesRes, guestsRes] = await Promise.all([
-      supabase.from('wedding_tables').select('*').order('name', { ascending: true }),
+      supabase.from('wedding_tables').select('*').order('table_number', { ascending: true }),
       supabase.from('wedding_guests').select('*').order('id', { ascending: true })
     ]);
     if (tablesRes.error) throw tablesRes.error;
@@ -775,16 +780,22 @@ async function loadSeatingData() {
 function renderSeating() {
   const tables = seatingState.tables, guests = seatingState.guests;
   const assigned = guests.filter(g => g.table_id !== null && g.table_id !== undefined).length;
+  const countStatus = status => guests.filter(g => g.rsvp_status === status).length;
   const put = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
   put('seat-total-guests', guests.length);
+  put('seat-confirmed', countStatus('confirmado'));
+  put('seat-unconfirmed', countStatus('nao_confirmado'));
+  put('seat-pending', countStatus('pendente'));
   put('seat-assigned', assigned);
   put('seat-unassigned', guests.length - assigned);
   put('seat-total-tables', tables.length);
+  const openSeats = tables.reduce((sum,t) => sum + Math.max(0, 8 - guests.filter(g => String(g.table_id) === String(t.id)).length), 0);
+  put('seat-open-seats', openSeats);
   put('seat-table-summary', tables.length + (tables.length === 1 ? ' mesa' : ' mesas'));
   const select = document.getElementById('seat-guest-table');
   if (select) {
     const selected = select.value;
-    select.innerHTML = '<option value="">Ainda sem mesa</option>' + tables.map(t => '<option value="' + t.id + '">' + seatEscape(t.name) + ' · ' + (t.table_type === 'staff' ? 'Staff' : 'Convidados') + '</option>').join('');
+    select.innerHTML = '<option value="">Ainda sem mesa</option>' + tables.map(t => '<option value="' + t.id + '">' + seatEscape(seatTableLabel(t)) + ' · ' + (t.table_type === 'staff' ? 'Staff' : 'Convidados') + '</option>').join('');
     if (selected && tables.some(t => String(t.id) === selected)) select.value = selected;
   }
   const tableContainer = document.getElementById('seat-tables-container');
@@ -792,22 +803,46 @@ function renderSeating() {
     tableContainer.innerHTML = tables.length ? tables.map(t => {
       const group = guests.filter(g => String(g.table_id) === String(t.id));
       const confirmed = group.filter(g => g.rsvp_status === 'confirmado').length;
+      const pending = group.filter(g => g.rsvp_status === 'pendente').length;
+      const notConfirmed = group.filter(g => g.rsvp_status === 'nao_confirmado').length;
       const full = group.length >= 8;
       const seatTiles = Array.from({length:8}, (_,i) => {
         const guest = group[i];
-        return '<div class="seat-position ' + (guest ? 'seat-filled' : 'seat-free') + '"><small>Lugar ' + (i+1) + '</small><span>' + (guest ? seatEscape(guest.full_name) : '<em>Livre</em>') + '</span></div>';
+        return '<div class="seat-position ' + (guest ? 'seat-filled' : 'seat-free') + '"><small>Lugar ' + (i+1) + '</small><span>' + (guest ? seatEscape(guest.full_name) : '<em>Livre</em>') + '</span>' + (guest ? '<small>' + seatEscape(seatStatusLabel(guest.rsvp_status)) + '</small>' : '') + '</div>';
       }).join('');
       const typeLabel = t.table_type === 'staff' ? 'Staff / equipe' : 'Convidados';
       const overflow = group.length > 8 ? '<div class="alert alert-danger py-2 mt-2 mb-0">Atenção: há mais de 8 pessoas nesta mesa. Ajuste a distribuição.</div>' : '';
+      const heading = seatTableLabel(t);
       return '<div class="col-sm-6 col-xl-4"><div class="card seating-table-card h-100" style="--table-color:' + seatEscape(t.color || '#2c5e2e') + '">' +
-        '<div class="card-body"><div class="d-flex justify-content-between align-items-start gap-2"><div><span class="table-color-dot me-1" style="background:' + seatEscape(t.color || '#dcefe0') + '"></span><h5 class="d-inline card-title">' + seatEscape(t.name) + '</h5><div class="mt-2"><span class="badge ' + (t.table_type === 'staff' ? 'bg-info text-dark' : 'bg-light text-dark') + '">' + typeLabel + '</span></div></div><span class="badge ' + (full ? 'bg-danger' : 'bg-success') + '">' + group.length + '/8</span></div>' +
+        '<div class="card-body"><div class="d-flex justify-content-between align-items-start gap-2"><div><span class="table-color-dot me-1" style="background:' + seatEscape(t.color || '#dcefe0') + '"></span><h5 class="d-inline card-title">' + seatEscape(heading) + '</h5><div class="mt-2"><span class="badge ' + (t.table_type === 'staff' ? 'bg-info text-dark' : 'bg-light text-dark') + '">' + typeLabel + '</span></div></div><span class="badge ' + (full ? 'bg-danger' : 'bg-success') + '">' + group.length + '/8</span></div>' +
         '<div class="progress my-3"><div class="progress-bar ' + (full ? 'bg-danger' : 'bg-success') + '" style="width:' + Math.min(100, group.length / 8 * 100) + '%"></div></div>' +
         '<div class="seat-grid mb-3">' + seatTiles + '</div>' +
-        '<div class="seating-muted mb-3">' + confirmed + ' confirmado(s) · ' + group.filter(g => g.rsvp_status !== 'confirmado').length + ' pendente(s)' + (t.notes ? '<br>' + seatEscape(t.notes) : '') + '</div>' + overflow +
+        '<div class="seating-muted mb-3"><span class="text-success fw-semibold">' + confirmed + ' confirmados</span> · <span class="text-warning fw-semibold">' + pending + ' pendentes</span> · <span class="text-danger fw-semibold">' + notConfirmed + ' não confirmados</span>' + (t.notes ? '<br>' + seatEscape(t.notes) : '') + '</div>' + overflow +
         '<div class="d-flex gap-2 flex-wrap no-print mt-3"><button class="btn btn-sm btn-outline-primary" onclick="editWeddingTable(' + t.id + ')"><i class="bi bi-pencil me-1"></i>Editar</button><button class="btn btn-sm btn-outline-secondary" onclick="filterGuestsByTable(' + t.id + ')"><i class="bi bi-people me-1"></i>Ver lista</button><button class="btn btn-sm btn-outline-danger" onclick="deleteWeddingTable(' + t.id + ')"><i class="bi bi-trash"></i></button></div></div></div></div>';
-    }).join('') : '<div class="col-12 text-center text-muted py-4"><i class="bi bi-grid fs-2 d-block mb-2"></i>Nenhuma mesa cadastrada. Crie uma mesa de convidados ou de staff acima.</div>';
+    }).join('') : '<div class="col-12 text-center text-muted py-4"><i class="bi bi-grid fs-2 d-block mb-2"></i>Nenhuma mesa cadastrada. Crie mesas numeradas de convidados ou de staff acima.</div>';
   }
   renderWeddingGuests();
+}
+function filterSeatingOverview(filter) {
+  const search = document.getElementById('seat-guest-search');
+  const status = document.getElementById('seat-guest-filter');
+  const category = document.getElementById('seat-category-filter');
+  if (filter === 'mesas' || filter === 'vagas') {
+    document.querySelectorAll('.seating-table-card').forEach(card => {
+      const badge = card.querySelector('.badge.bg-success, .badge.bg-danger');
+      const isFull = badge && badge.classList.contains('bg-danger');
+      card.closest('.col-sm-6')?.classList.toggle('d-none', filter === 'vagas' && isFull);
+    });
+    document.getElementById('seat-tables-container')?.scrollIntoView({behavior:'smooth',block:'start'});
+    return;
+  }
+  document.querySelectorAll('#seat-tables-container .col-sm-6').forEach(card => card.classList.remove('d-none'));
+  if (search) search.value = '';
+  if (category) category.value = 'todos';
+  if (status) status.value = filter;
+  if (filter === 'sem-mesa') status.value = 'sem-mesa';
+  renderWeddingGuests();
+  document.getElementById('seat-guests-container')?.closest('.card')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function renderWeddingGuests() {
   const container = document.getElementById('seat-guests-container');
@@ -817,8 +852,9 @@ function renderWeddingGuests() {
   const categoryFilter = document.getElementById('seat-category-filter')?.value || 'todos';
   const guests = seatingState.guests.filter(g => {
     const table = seatingState.tables.find(t => String(t.id) === String(g.table_id));
-    const matchesSearch = [g.full_name, g.household, table?.name, seatCategoryLabel(g.category)].some(v => String(v || '').toLocaleLowerCase('pt-BR').includes(search));
-    const matchesFilter = filter === 'todos' || (filter === 'sem-mesa' ? !g.table_id : g.rsvp_status === filter);
+    const searchable = [g.full_name,g.household,seatTableLabel(table),seatCategoryLabel(g.category),seatStatusLabel(g.rsvp_status),g.notes,g.category].join(' ').toLocaleLowerCase('pt-BR');
+    const matchesSearch = searchable.includes(search);
+    const matchesFilter = filter === 'todos' || (filter === 'sem-mesa' ? !g.table_id : filter === 'com-mesa' ? !!g.table_id : g.rsvp_status === filter);
     const matchesCategory = categoryFilter === 'todos' || (g.category || 'convidado') === categoryFilter;
     return matchesSearch && matchesFilter && matchesCategory;
   });
@@ -826,15 +862,18 @@ function renderWeddingGuests() {
     const table = seatingState.tables.find(t => String(t.id) === String(g.table_id));
     const color = table?.color || '#adb5bd';
     const typeMismatch = table && ((table.table_type === 'staff') !== seatIsStaff(g.category || 'convidado'));
-    return '<tr class="guest-row" style="--table-color:' + seatEscape(color) + '"><td><strong>' + seatEscape(g.full_name) + '</strong>' + (g.notes ? '<br><small class="text-muted">' + seatEscape(g.notes) + '</small>' : '') + '</td><td>' + seatEscape(seatCategoryLabel(g.category)) + '</td><td>' + seatEscape(g.household || '—') + '</td><td>' + (table ? '<span class="table-color-dot me-1" style="background:' + seatEscape(color) + '"></span>' + seatEscape(table.name) + (typeMismatch ? ' <span class="badge bg-danger">Tipo incompatível</span>' : '') : '<span class="badge bg-warning text-dark">Sem mesa</span>') + '</td><td><span class="badge ' + seatStatusClass(g.rsvp_status) + '">' + seatStatusLabel(g.rsvp_status) + '</span></td><td class="no-print"><button class="btn btn-sm btn-outline-primary me-1" title="Editar" onclick="editWeddingGuest(' + g.id + ')"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" title="Excluir" onclick="deleteWeddingGuest(' + g.id + ')"><i class="bi bi-trash"></i></button></td></tr>';
-  }).join('') : '<tr><td colspan="6" class="text-center text-muted py-4">Nenhuma pessoa encontrada.</td></tr>';
-  const total = seatingState.guests.length;
+    const detailText = [g.notes || 'Sem observações', g.rsvp_status === 'pendente' ? 'Precisa de confirmação' : ''].filter(Boolean).join(' · ');
+    return '<tr class="guest-row" style="--table-color:' + seatEscape(color) + '"><td><strong>' + seatEscape(g.full_name) + '</strong></td><td>' + seatEscape(seatCategoryLabel(g.category)) + '</td><td>' + seatEscape(g.household || '—') + '</td><td>' + (table ? '<span class="table-color-dot me-1" style="background:' + seatEscape(color) + '"></span>' + seatEscape(seatTableLabel(table)) + (typeMismatch ? ' <span class="badge bg-danger">Tipo incompatível</span>' : '') : '<span class="badge bg-warning text-dark">Sem mesa</span>') + '</td><td><span class="badge ' + seatStatusClass(g.rsvp_status) + '">' + seatStatusLabel(g.rsvp_status) + '</span></td><td class="guest-detail">' + seatEscape(detailText) + '</td><td class="no-print"><button class="btn btn-sm btn-outline-primary me-1" title="Editar pessoa" onclick="editWeddingGuest(' + g.id + ')"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" title="Excluir pessoa" onclick="deleteWeddingGuest(' + g.id + ')"><i class="bi bi-trash"></i></button></td></tr>';
+  }).join('') : '<tr><td colspan="7" class="text-center text-muted py-4">Nenhuma pessoa encontrada.</td></tr>';
   const summary = document.getElementById('seat-guest-summary');
-  if (summary) summary.textContent = guests.length + ' exibido(s) de ' + total + ' pessoa(s)';
+  if (summary) summary.textContent = guests.length + ' exibido(s) de ' + seatingState.guests.length + ' pessoas';
+  const details = document.getElementById('seat-guest-summary-detail');
+  if (details) details.textContent = seatingState.guests.filter(g=>g.rsvp_status==='pendente').length + ' aguardando confirmação · ' + seatingState.guests.filter(g=>!g.table_id).length + ' sem mesa';
 }
 function resetWeddingTableForm() {
   document.getElementById('wedding-table-form')?.reset();
   document.getElementById('seat-table-id').value = '';
+  document.getElementById('seat-table-number').value = '';
   document.getElementById('seat-table-capacity').value = 8;
   document.getElementById('seat-table-type').value = 'convidados';
   document.getElementById('seat-table-color').value = '#dcefe0';
@@ -852,13 +891,15 @@ async function saveWeddingTable(event) {
   event.preventDefault();
   const id = document.getElementById('seat-table-id').value;
   const data = {
+    table_number: Number(document.getElementById('seat-table-number').value),
     name: document.getElementById('seat-table-name').value.trim(),
     capacity: 8,
     table_type: document.getElementById('seat-table-type').value || 'convidados',
     color: document.getElementById('seat-table-color').value || '#dcefe0',
     notes: document.getElementById('seat-table-notes').value.trim()
   };
-  if (!data.name) return showToast('Informe o nome da mesa.', 'warning');
+  if (!Number.isInteger(data.table_number) || data.table_number < 1 || data.table_number > 999) return showToast('Informe um número de mesa válido.', 'warning');
+  if (seatingState.tables.some(t => Number(t.table_number) === data.table_number && String(t.id) !== String(id))) return showToast('Já existe uma mesa com esse número.', 'warning');
   try {
     const result = id ? await supabase.from('wedding_tables').update(data).eq('id', id) : await supabase.from('wedding_tables').insert([data]);
     if (result.error) throw result.error;
@@ -892,7 +933,7 @@ async function saveWeddingGuest(event) {
     const result = id ? await supabase.from('wedding_guests').update(data).eq('id', id) : await supabase.from('wedding_guests').insert([data]);
     if (result.error) throw result.error;
     resetWeddingGuestForm();
-    showToast(id ? 'Convidado atualizado!' : 'Convidado adicionado!');
+    showToast(id ? 'Pessoa atualizada!' : 'Pessoa adicionada!');
     await loadSeatingData();
   } catch (error) { showToast('Erro ao salvar convidado: ' + error.message, 'danger'); }
 }
@@ -900,6 +941,7 @@ function editWeddingTable(id) {
   const t = seatingState.tables.find(item => String(item.id) === String(id));
   if (!t) return;
   document.getElementById('seat-table-id').value = t.id;
+  document.getElementById('seat-table-number').value = t.table_number || '';
   document.getElementById('seat-table-name').value = t.name || '';
   document.getElementById('seat-table-capacity').value = 8;
   document.getElementById('seat-table-type').value = t.table_type || 'convidados';
@@ -946,52 +988,101 @@ function filterGuestsByTable(id) {
   if (!table) return;
   const search = document.getElementById('seat-guest-search');
   const filter = document.getElementById('seat-guest-filter');
-  if (search) search.value = table.name;
+  if (search) search.value = seatTableLabel(table);
   if (filter) filter.value = 'todos';
+  document.querySelectorAll('#seat-tables-container .col-sm-6').forEach(card => card.classList.remove('d-none'));
   renderWeddingGuests();
   document.getElementById('seat-guests-container')?.closest('.card')?.scrollIntoView({behavior:'smooth', block:'start'});
 }
 function printSeating() { window.print(); }
 function downloadSeatingPDF() {
-  const JsPDF = window.jspdf?.jsPDF;
-  if (!JsPDF) return showToast('O gerador de PDF não carregou. Atualize a página e tente novamente.', 'danger');
-  const doc = new JsPDF({orientation:'portrait', unit:'mm', format:'a4'});
-  const date = new Date().toLocaleDateString('pt-BR');
-  doc.setFontSize(18);
-  doc.text('Mesas e Convidados - Casamento', 14, 18);
-  doc.setFontSize(10);
-  doc.text('Gerado em ' + date + ' · 8 lugares por mesa', 14, 25);
-  doc.text('Pessoas: ' + seatingState.guests.length + ' · Mesas: ' + seatingState.tables.length + ' · Sem mesa: ' + seatingState.guests.filter(g => !g.table_id).length, 14, 32);
-  let y = 42;
-  seatingState.tables.forEach((table, index) => {
-    const people = seatingState.guests.filter(g => String(g.table_id) === String(table.id));
-    if (y > 250) { doc.addPage(); y = 18; }
-    doc.setFontSize(13);
-    doc.text(table.name + ' — ' + (table.table_type === 'staff' ? 'Staff/equipe' : 'Convidados') + ' (' + people.length + '/8)', 14, y);
-    doc.autoTable({
-      startY: y + 3,
-      head: [['Lugar', 'Nome', 'Categoria', 'Confirmação']],
-      body: Array.from({length:8}, (_,i) => {
-        const person = people[i];
-        return [String(i+1), person?.full_name || 'Livre', person ? seatCategoryLabel(person.category) : '—', person ? seatStatusLabel(person.rsvp_status) : '—'];
-      }),
-      theme: 'grid',
-      styles: {fontSize:8, cellPadding:2},
-      headStyles: {fillColor:[44,94,46]},
-      margin: {left:14,right:14},
-      didDrawPage: () => {}
-    });
-    y = doc.lastAutoTable.finalY + 10;
-  });
-  const unassigned = seatingState.guests.filter(g => !g.table_id);
-  if (unassigned.length) {
-    if (y > 245) { doc.addPage(); y = 18; }
-    doc.setFontSize(13);
-    doc.text('Pessoas sem mesa', 14, y);
-    doc.autoTable({startY:y+3,head:[['Nome','Categoria','Confirmação']],body:unassigned.map(g=>[g.full_name,seatCategoryLabel(g.category),seatStatusLabel(g.rsvp_status)]),theme:'grid',styles:{fontSize:8},headStyles:{fillColor:[44,94,46]},margin:{left:14,right:14}});
+  const JsPDF = window.jspdf && window.jspdf.jsPDF;
+  if (!JsPDF) {
+    showToast('A biblioteca de PDF não carregou. Vou abrir a versão de impressão; escolha “Salvar como PDF”.', 'warning');
+    printSeating();
+    return;
   }
-  doc.save('mesas-e-convidados-casamento.pdf');
-  showToast('PDF gerado para download.');
+  const doc = new JsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  let y = 18;
+  const date = new Date().toLocaleDateString('pt-BR');
+  const counts = {
+    total: seatingState.guests.length,
+    confirmed: seatingState.guests.filter(g=>g.rsvp_status==='confirmado').length,
+    pending: seatingState.guests.filter(g=>g.rsvp_status==='pendente').length,
+    unconfirmed: seatingState.guests.filter(g=>g.rsvp_status==='nao_confirmado').length,
+    unassigned: seatingState.guests.filter(g=>!g.table_id).length
+  };
+  const newPage = () => { doc.addPage(); y = 18; };
+  const ensureSpace = (needed=8) => { if (y + needed > pageHeight - 14) newPage(); };
+  const writeLine = (text, opts={}) => {
+    const fontSize = opts.fontSize || 9;
+    const indent = opts.indent || 0;
+    const lineHeight = opts.lineHeight || 5;
+    doc.setFont('helvetica', opts.bold ? 'bold' : 'normal');
+    doc.setFontSize(fontSize);
+    const wrapped = doc.splitTextToSize(String(text), pageWidth - margin*2 - indent);
+    const needed = wrapped.length * lineHeight + (opts.gap || 0);
+    ensureSpace(needed);
+    if (opts.fill) {
+      doc.setFillColor(...opts.fill);
+      doc.roundedRect(margin + indent - 2, y - 4, pageWidth - margin*2 - indent + 4, needed + 1, 1.5, 1.5, 'F');
+    }
+    doc.text(wrapped, margin + indent, y);
+    y += needed;
+  };
+  doc.setFillColor(44,94,46);
+  doc.rect(0,0,pageWidth,37,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold'); doc.setFontSize(17);
+  doc.text('RELATÓRIO DE MESAS E CONVIDADOS',margin,17);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text('Casamento · Gerado em ' + date,margin,25);
+  doc.text('Distribuição manual · 8 lugares por mesa',margin,31);
+  doc.setTextColor(30,41,59); y=46;
+  writeLine('RESUMO GERAL',{fontSize:12,bold:true,lineHeight:7});
+  writeLine('Pessoas cadastradas: ' + counts.total + '  |  Confirmados: ' + counts.confirmed + '  |  Pendentes: ' + counts.pending + '  |  Não confirmados: ' + counts.unconfirmed,{fontSize:9,lineHeight:6});
+  writeLine('Mesas cadastradas: ' + seatingState.tables.length + '  |  Pessoas sem mesa: ' + counts.unassigned,{fontSize:9,lineHeight:6,gap:3});
+  seatingState.tables.slice().sort((a,b)=>Number(a.table_number)-Number(b.table_number)).forEach(table => {
+    const people = seatingState.guests.filter(g=>String(g.table_id)===String(table.id));
+    ensureSpace(18);
+    doc.setFillColor(table.table_type==='staff'?13:44,table.table_type==='staff'?148:94,table.table_type==='staff'?136:46);
+    doc.roundedRect(margin,y-4,pageWidth-margin*2,9,2,2,'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.text(seatTableLabel(table) + ' — ' + (table.table_type==='staff'?'STAFF / EQUIPE':'CONVIDADOS') + ' ('+people.length+'/8)',margin+3,y+1.5);
+    y+=10; doc.setTextColor(30,41,59);
+    for(let i=0;i<8;i++){
+      const person=people[i];
+      const row = person
+        ? (i+1)+'. '+person.full_name+' | '+seatCategoryLabel(person.category)+' | '+seatStatusLabel(person.rsvp_status)+(person.household?' | '+person.household:'')+(person.notes?' | '+person.notes:'')
+        : (i+1)+'. Lugar livre';
+      writeLine(row,{fontSize:8,indent:2,lineHeight:4.4});
+    }
+    if(people.length>8) writeLine('ATENÇÃO: '+(people.length-8)+' pessoa(s) excedem a capacidade desta mesa.',{fontSize:8,bold:true});
+    y+=4;
+  });
+  const unassigned = seatingState.guests.filter(g=>!g.table_id);
+  ensureSpace(16);
+  writeLine('PESSOAS SEM MESA ('+unassigned.length+')',{fontSize:12,bold:true,lineHeight:7,gap:2});
+  if(!unassigned.length) writeLine('Todas as pessoas estão atribuídas a uma mesa.',{fontSize:9});
+  unassigned.forEach(g=>writeLine(g.full_name+' | '+seatCategoryLabel(g.category)+' | '+seatStatusLabel(g.rsvp_status)+(g.household?' | '+g.household:'')+(g.notes?' | '+g.notes:''),{fontSize:8,indent:2,lineHeight:4.4}));
+  const pending = seatingState.guests.filter(g=>g.rsvp_status==='pendente');
+  ensureSpace(16);
+  writeLine('PENDENTES DE CONFIRMAÇÃO ('+pending.length+')',{fontSize:12,bold:true,lineHeight:7,gap:2});
+  if(!pending.length) writeLine('Nenhuma pessoa pendente de confirmação.',{fontSize:9});
+  pending.forEach(g=>writeLine(g.full_name+' | '+(seatingState.tables.find(t=>String(t.id)===String(g.table_id))?seatTableLabel(seatingState.tables.find(t=>String(t.id)===String(g.table_id))):'Sem mesa'),{fontSize:8,indent:2,lineHeight:4.4}));
+  const notConfirmed = seatingState.guests.filter(g=>g.rsvp_status==='nao_confirmado');
+  ensureSpace(16);
+  writeLine('NÃO CONFIRMADOS ('+notConfirmed.length+')',{fontSize:12,bold:true,lineHeight:7,gap:2});
+  notConfirmed.forEach(g=>writeLine(g.full_name+' | '+(seatingState.tables.find(t=>String(t.id)===String(g.table_id))?seatTableLabel(seatingState.tables.find(t=>String(t.id)===String(g.table_id))):'Sem mesa'),{fontSize:8,indent:2,lineHeight:4.4}));
+  for(let p=1;p<=doc.getNumberOfPages();p++){
+    doc.setPage(p); doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(100,116,139);
+    doc.text('Relatório de mesas e convidados · Página '+p+' de '+doc.getNumberOfPages(),pageWidth/2,pageHeight-7,{align:'center'});
+  }
+  doc.save('relatorio-mesas-e-convidados.pdf');
+  showToast('Relatório PDF gerado. Confira a pasta Downloads.');
 }
 
 

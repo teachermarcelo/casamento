@@ -430,6 +430,12 @@
     }
 
     /* Planejamento de mesas e convidados */
+    .seat-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.5rem; }
+    .seat-position { min-height:58px; border:1px solid #e2e8f0; border-radius:10px; padding:.45rem .55rem; display:flex; flex-direction:column; gap:.2rem; min-width:0; }
+    .seat-position small { color:#64748b; font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; }
+    .seat-position span { font-size:.82rem; font-weight:600; overflow-wrap:anywhere; }
+    .seat-filled { background:#edf7ef; border-color:#b7d8bc; }
+    .seat-free { background:#f8fafc; color:#64748b; }
     .seating-stat { border-left: 5px solid var(--primary); padding: 1rem 1.25rem; border-radius: 14px; background: #fff; box-shadow: var(--shadow); height: 100%; }
     .seating-stat .number { font-size: 1.8rem; font-weight: 750; line-height: 1.2; }
     .seating-table-card { border-top: 5px solid var(--table-color, var(--primary)); }
@@ -760,16 +766,16 @@
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
       <div>
         <h2 class="mb-1"><i class="bi bi-grid-3x3-gap me-2"></i>Mesas e Convidados</h2>
-        <p class="text-muted mb-0">Organize os convidados, distribua as mesas e acompanhe as confirmações em um só lugar.</p>
+        <p class="text-muted mb-0">Organize convidados e equipe, distribua manualmente as mesas de oito lugares e acompanhe as confirmações.</p>
       </div>
       <div class="d-flex gap-2 no-print">
-        <button class="btn btn-outline-primary" type="button" onclick="printSeating()"><i class="bi bi-printer me-1"></i>Imprimir lista</button>
+        <button class="btn btn-success" type="button" onclick="downloadSeatingPDF()"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar PDF</button><button class="btn btn-outline-primary" type="button" onclick="printSeating()"><i class="bi bi-printer me-1"></i>Imprimir lista</button>
         <button class="btn btn-outline-secondary" type="button" onclick="loadSeatingData()"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar</button>
       </div>
     </div>
 
     <div class="row g-3 mb-4">
-      <div class="col-6 col-lg-3"><div class="seating-stat"><div class="seating-muted">Convidados cadastrados</div><div class="number" id="seat-total-guests">0</div></div></div>
+      <div class="col-6 col-lg-3"><div class="seating-stat"><div class="seating-muted">Pessoas cadastradas</div><div class="number" id="seat-total-guests">0</div></div></div>
       <div class="col-6 col-lg-3"><div class="seating-stat" style="border-left-color:#198754"><div class="seating-muted">Com mesa definida</div><div class="number" id="seat-assigned">0</div></div></div>
       <div class="col-6 col-lg-3"><div class="seating-stat" style="border-left-color:#ffc107"><div class="seating-muted">Sem mesa</div><div class="number" id="seat-unassigned">0</div></div></div>
       <div class="col-6 col-lg-3"><div class="seating-stat" style="border-left-color:#0dcaf0"><div class="seating-muted">Mesas cadastradas</div><div class="number" id="seat-total-tables">0</div></div></div>
@@ -789,8 +795,8 @@
               <input type="hidden" id="seat-table-id">
               <div class="mb-3"><label class="form-label">Nome ou número da mesa</label><input class="form-control" id="seat-table-name" placeholder="Ex.: Mesa 8" required maxlength="80"></div>
               <div class="row g-3">
-                <div class="col-6"><label class="form-label">Capacidade</label><input class="form-control" id="seat-table-capacity" type="number" min="1" max="1000" value="8" required></div>
-                <div class="col-6"><label class="form-label">Cor de identificação</label><input class="form-control form-control-color w-100" id="seat-table-color" type="color" value="#dcefe0" title="Escolha uma cor"></div>
+                <div class="col-6"><label class="form-label">Lugares fixos</label><input class="form-control" id="seat-table-capacity" type="number" min="8" max="8" value="8" readonly required><small class="text-muted">8 lugares por mesa</small></div>
+                <div class="col-6"><label class="form-label">Tipo de mesa</label><select class="form-select" id="seat-table-type" required><option value="convidados">Convidados</option><option value="staff">Staff / equipe</option></select></div><div class="col-6"><label class="form-label">Cor de identificação</label><input class="form-control form-control-color w-100" id="seat-table-color" type="color" value="#dcefe0" title="Escolha uma cor"></div>
               </div>
               <div class="mt-3 mb-3"><label class="form-label">Observações (opcional)</label><input class="form-control" id="seat-table-notes" maxlength="500" placeholder="Ex.: perto da pista"></div>
               <button class="btn btn-success w-100" type="submit"><i class="bi bi-save me-1"></i>Salvar mesa</button>
@@ -800,18 +806,19 @@
       </div>
       <div class="col-lg-7">
         <div class="card h-100">
-          <div class="card-header"><span><i class="bi bi-person-plus me-2"></i><span id="seat-guest-form-title">Adicionar convidado</span></span><button class="btn btn-sm btn-light" type="button" onclick="resetWeddingGuestForm()">Limpar</button></div>
+          <div class="card-header"><span><i class="bi bi-person-plus me-2"></i><span id="seat-guest-form-title">Adicionar pessoa</span></span><button class="btn btn-sm btn-light" type="button" onclick="resetWeddingGuestForm()">Limpar</button></div>
           <div class="card-body">
             <form id="wedding-guest-form">
               <input type="hidden" id="seat-guest-id">
               <div class="row g-3">
                 <div class="col-md-6"><label class="form-label">Nome completo</label><input class="form-control" id="seat-guest-name" required maxlength="160" placeholder="Nome do convidado"></div>
                 <div class="col-md-6"><label class="form-label">Família / grupo</label><input class="form-control" id="seat-guest-household" maxlength="120" placeholder="Ex.: família Silva"></div>
-                <div class="col-md-5"><label class="form-label">Confirmação</label><select class="form-select" id="seat-guest-rsvp"><option value="pendente">Pendente</option><option value="confirmado">Confirmado</option><option value="recusado">Não vai</option></select></div>
-                <div class="col-md-7"><label class="form-label">Mesa</label><select class="form-select" id="seat-guest-table"><option value="">Ainda sem mesa</option></select></div>
+                <div class="col-md-4"><label class="form-label">Categoria</label><select class="form-select" id="seat-guest-category" required><option value="convidado">Convidado</option><option value="familia">Família</option><option value="fotografia">Fotografia</option><option value="cerimonial">Cerimonialista</option><option value="story_maker">Story maker</option><option value="som">Som / técnica</option><option value="musica">Música</option><option value="celebrante">Celebrante / ministro</option><option value="outro">Outro</option></select></div>
+                <div class="col-md-4"><label class="form-label">Confirmação</label><select class="form-select" id="seat-guest-rsvp"><option value="pendente">Pendente de confirmação</option><option value="nao_confirmado">Não confirmado (marcação especial)</option><option value="confirmado">Confirmado</option><option value="recusado">Não vai</option></select></div>
+                <div class="col-md-4"><label class="form-label">Mesa</label><select class="form-select" id="seat-guest-table"><option value="">Ainda sem mesa</option></select></div>
                 <div class="col-12"><label class="form-label">Observações (opcional)</label><input class="form-control" id="seat-guest-notes" maxlength="500" placeholder="Ex.: criança, restrição alimentar (se necessário)"></div>
               </div>
-              <button class="btn btn-primary w-100 mt-3" type="submit"><i class="bi bi-save me-1"></i>Salvar convidado</button>
+              <button class="btn btn-primary w-100 mt-3" type="submit"><i class="bi bi-save me-1"></i>Salvar pessoa</button>
             </form>
           </div>
         </div>
@@ -825,19 +832,20 @@
 
     <div class="card">
       <div class="card-header flex-wrap gap-2">
-        <span><i class="bi bi-people me-2"></i>Lista de convidados</span>
+        <span><i class="bi bi-people me-2"></i>Lista de pessoas</span>
         <div class="d-flex gap-2 flex-wrap no-print">
           <input class="form-control form-control-sm" id="seat-guest-search" placeholder="Buscar nome ou família..." aria-label="Buscar convidado">
           <select class="form-select form-select-sm" id="seat-guest-filter" aria-label="Filtrar convidados" style="max-width:190px">
-            <option value="todos">Todos os convidados</option><option value="sem-mesa">Sem mesa</option><option value="confirmado">Confirmados</option><option value="pendente">Pendentes</option><option value="recusado">Não vão</option>
+            <option value="todos">Todas as presenças</option><option value="sem-mesa">Sem mesa</option><option value="confirmado">Confirmados</option><option value="pendente">Pendentes</option><option value="nao_confirmado">Não confirmados</option><option value="recusado">Não vão</option>
           </select>
+          <select class="form-select form-select-sm" id="seat-category-filter" aria-label="Filtrar categoria" style="max-width:180px"><option value="todos">Todas as categorias</option><option value="convidado">Convidado</option><option value="familia">Família</option><option value="fotografia">Fotografia</option><option value="cerimonial">Cerimonialista</option><option value="story_maker">Story maker</option><option value="som">Som / técnica</option><option value="musica">Música</option><option value="celebrante">Celebrante / ministro</option><option value="outro">Outro</option></select>
         </div>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
-            <thead><tr><th>Convidado</th><th>Família / grupo</th><th>Mesa</th><th>Presença</th><th class="no-print">Ações</th></tr></thead>
-            <tbody id="seat-guests-container"><tr><td colspan="5" class="text-center text-muted py-4">Carregando convidados...</td></tr></tbody>
+            <thead><tr><th>Nome</th><th>Categoria</th><th>Família / grupo</th><th>Mesa</th><th>Presença</th><th class="no-print">Ações</th></tr></thead>
+            <tbody id="seat-guests-container"><tr><td colspan="6" class="text-center text-muted py-4">Carregando convidados...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1154,6 +1162,8 @@
 <!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/app.js"></script>
 </body>

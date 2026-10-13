@@ -896,6 +896,7 @@ function resetWeddingTableForm() {
 function resetWeddingGuestForm() {
   document.getElementById('wedding-guest-form')?.reset();
   document.getElementById('seat-guest-id').value = '';
+  hideGuestSuggestions();
   document.getElementById('seat-guest-rsvp').value = 'pendente';
   document.getElementById('seat-guest-category').value = 'convidado';
   document.getElementById('seat-guest-table').value = '';
@@ -953,6 +954,51 @@ async function saveWeddingGuest(event) {
     showToast(id ? 'Pessoa atualizada!' : 'Pessoa adicionada!');
     await loadSeatingData();
   } catch (error) { showToast('Erro ao salvar convidado: ' + error.message, 'danger'); }
+}
+function hideGuestSuggestions() {
+  const box = document.getElementById('seat-guest-suggestions');
+  if (box) { box.hidden = true; box.innerHTML = ''; }
+}
+function renderGuestSuggestions() {
+  const input = document.getElementById('seat-guest-name');
+  const box = document.getElementById('seat-guest-suggestions');
+  if (!input || !box) return;
+  const query = input.value.trim().toLocaleLowerCase('pt-BR');
+  if (query.length < 1) { hideGuestSuggestions(); return; }
+  const currentId = document.getElementById('seat-guest-id')?.value || '';
+  const matches = seatingState.guests
+    .filter(g => String(g.id) !== String(currentId))
+    .filter(g => [g.full_name,g.household,g.category,g.notes].join(' ').toLocaleLowerCase('pt-BR').includes(query))
+    .slice(0, 8);
+  const exact = seatingState.guests.some(g => g.full_name.trim().toLocaleLowerCase('pt-BR') === query && String(g.id) === String(currentId));
+  if (!matches.length) {
+    box.innerHTML = '<div class="guest-suggestion-new"><i class="bi bi-person-plus me-1"></i>Nenhum cadastro correspondente. Ao salvar, uma nova pessoa será criada.</div>';
+  } else {
+    box.innerHTML = matches.map(g => {
+      const table = seatingState.tables.find(t => String(t.id) === String(g.table_id));
+      const meta = [seatCategoryLabel(g.category), g.household || '', table ? seatTableLabel(table) : 'Sem mesa', seatStatusLabel(g.rsvp_status)].filter(Boolean).join(' · ');
+      return '<button type="button" class="guest-suggestion" role="option" onclick="selectExistingWeddingGuest(' + Number(g.id) + ')"><strong>' + seatEscape(g.full_name) + '</strong><small>' + seatEscape(meta) + '</small></button>';
+    }).join('');
+    if (matches.length === 8) box.innerHTML += '<div class="guest-suggestion-new">Mostrando até 8 resultados. Continue digitando para refinar.</div>';
+  }
+  box.hidden = false;
+}
+function selectExistingWeddingGuest(id) {
+  const guest = seatingState.guests.find(g => String(g.id) === String(id));
+  if (!guest) return showToast('Não foi possível localizar essa pessoa.', 'danger');
+  const targetTable = document.getElementById('seat-guest-table')?.value || '';
+  document.getElementById('seat-guest-id').value = guest.id;
+  document.getElementById('seat-guest-name').value = guest.full_name || '';
+  document.getElementById('seat-guest-household').value = guest.household || '';
+  document.getElementById('seat-guest-rsvp').value = normalizeSeatStatus(guest.rsvp_status);
+  document.getElementById('seat-guest-category').value = guest.category || 'convidado';
+  document.getElementById('seat-guest-notes').value = guest.notes || '';
+  const tableSelect = document.getElementById('seat-guest-table');
+  if (tableSelect) tableSelect.value = targetTable || (guest.table_id == null ? '' : String(guest.table_id));
+  const title = document.getElementById('seat-guest-form-title');
+  if (title) title.textContent = 'Adicionar pessoa existente à mesa';
+  hideGuestSuggestions();
+  showToast(guest.table_id && String(guest.table_id) !== String(tableSelect?.value) ? 'Pessoa selecionada.' : 'Cadastro encontrado. Confira os dados e salve.');
 }
 function addGuestToSeat(tableId, seatNumber) {
   const table = seatingState.tables.find(item => String(item.id) === String(tableId));
@@ -1132,6 +1178,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('settings-form')?.addEventListener('submit', saveSettings);
   document.getElementById('wedding-table-form')?.addEventListener('submit', saveWeddingTable);
   document.getElementById('wedding-guest-form')?.addEventListener('submit', saveWeddingGuest);
+  document.getElementById('seat-guest-name')?.addEventListener('input', renderGuestSuggestions);
+  document.getElementById('seat-guest-name')?.addEventListener('focus', renderGuestSuggestions);
+  document.addEventListener('click', event => {
+    if (!event.target.closest('.guest-autocomplete-wrap')) hideGuestSuggestions();
+  });
   document.getElementById('seat-guest-search')?.addEventListener('input', renderWeddingGuests);
   document.getElementById('seat-guest-filter')?.addEventListener('change', renderWeddingGuests);
   document.getElementById('seat-category-filter')?.addEventListener('change', renderWeddingGuests);

@@ -450,7 +450,12 @@
     @media(max-width:992px){.seating-overview{grid-template-columns:repeat(2,minmax(0,1fr));}}
     @media(max-width:440px){.seating-overview{grid-template-columns:1fr 1fr;gap:8px}.seating-stat{padding:.8rem;min-height:135px}.seating-stat .number{font-size:1.6rem}}
     .seat-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.5rem; }
-    .seat-position { min-height:58px; border:1px solid #e2e8f0; border-radius:10px; padding:.45rem .55rem; display:flex; flex-direction:column; gap:.2rem; min-width:0; }
+    .seat-position-button{width:100%;text-align:left;font:inherit;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.seat-position-button:hover,.seat-position-button:focus-visible{transform:translateY(-2px);box-shadow:0 4px 12px rgba(25,135,84,.13);outline:2px solid rgba(25,135,84,.35);outline-offset:1px}
+.seat-position-button.seat-free{background:#f8fafc;border:1px dashed #b8c7d8}
+.seat-position-button.seat-free:hover{background:#eaf7ee;border-color:#198754}
+.seat-position-button .seat-add-hint{color:#198754;font-style:normal}
+.seat-position { min-height:58px; border:1px solid #e2e8f0; border-radius:10px; padding:.45rem .55rem; display:flex; flex-direction:column; gap:.2rem; min-width:0; }
     .seat-position small { color:#64748b; font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; }
     .seat-position span { font-size:.82rem; font-weight:600; overflow-wrap:anywhere; }
     .seat-filled { background:#edf7ef; border-color:#b7d8bc; }

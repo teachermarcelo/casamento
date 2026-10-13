@@ -816,7 +816,13 @@ function renderSeating() {
       const full = group.length >= 8;
       const seatTiles = Array.from({length:8}, (_,i) => {
         const guest = group[i];
-        return '<div class="seat-position ' + (guest ? 'seat-filled' : 'seat-free') + '"><small>Lugar ' + (i+1) + '</small><span>' + (guest ? seatEscape(guest.full_name) : '<em>Livre</em>') + '</span>' + (guest ? '<small>' + seatEscape(seatStatusLabel(guest.rsvp_status)) + '</small>' : '') + '</div>';
+        const action = guest
+          ? 'editWeddingGuest(' + Number(guest.id) + ')'
+          : 'addGuestToSeat(' + Number(t.id) + ',' + (i+1) + ')';
+        const hint = guest ? 'Clique para editar este convidado' : 'Clique para adicionar convidado neste lugar';
+        return '<button type="button" class="seat-position ' + (guest ? 'seat-filled' : 'seat-free') + ' seat-position-button" onclick="' + action + '" title="' + hint + '" aria-label="Mesa ' + seatEscape(t.table_number || '') + ', lugar ' + (i+1) + ': ' + (guest ? seatEscape(guest.full_name) : 'livre, adicionar convidado') + '">' +
+          '<small>LUGAR ' + (i+1) + '</small><span>' + (guest ? seatEscape(guest.full_name) : '<em>+ Adicionar convidado</em>') + '</span>' +
+          (guest ? '<small>' + seatEscape(seatStatusLabel(guest.rsvp_status)) + '</small>' : '<small class="seat-add-hint"><i class="bi bi-person-plus me-1"></i>Adicionar aqui</small>') + '</button>';
       }).join('');
       const typeLabel = t.table_type === 'staff' ? 'Staff / equipe' : 'Convidados';
       const overflow = group.length > 8 ? '<div class="alert alert-danger py-2 mt-2 mb-0">Atenção: há mais de 8 pessoas nesta mesa. Ajuste a distribuição.</div>' : '';
@@ -947,6 +953,23 @@ async function saveWeddingGuest(event) {
     showToast(id ? 'Pessoa atualizada!' : 'Pessoa adicionada!');
     await loadSeatingData();
   } catch (error) { showToast('Erro ao salvar convidado: ' + error.message, 'danger'); }
+}
+function addGuestToSeat(tableId, seatNumber) {
+  const table = seatingState.tables.find(item => String(item.id) === String(tableId));
+  if (!table) return showToast('Não foi possível localizar esta mesa.', 'danger');
+  const occupants = seatingState.guests.filter(g => String(g.table_id) === String(tableId));
+  if (occupants.length >= 8) return showToast('Esta mesa já está completa. Escolha um lugar em outra mesa.', 'warning');
+  resetWeddingGuestForm();
+  const tableSelect = document.getElementById('seat-guest-table');
+  if (tableSelect) tableSelect.value = String(tableId);
+  const categorySelect = document.getElementById('seat-guest-category');
+  if (categorySelect) categorySelect.value = table.table_type === 'staff' ? 'fotografia' : 'convidado';
+  const title = document.getElementById('seat-guest-form-title');
+  if (title) title.textContent = 'Adicionar pessoa · ' + seatTableLabel(table) + ' · Lugar ' + seatNumber;
+  const form = document.getElementById('wedding-guest-form');
+  form?.scrollIntoView({behavior:'smooth', block:'center'});
+  window.setTimeout(() => document.getElementById('seat-guest-name')?.focus({preventScroll:true}), 350);
+  showToast('Preencha o nome para ocupar o lugar ' + seatNumber + '. A mesa já está selecionada.');
 }
 function editWeddingTable(id) {
   const t = seatingState.tables.find(item => String(item.id) === String(id));

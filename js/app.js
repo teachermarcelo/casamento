@@ -839,7 +839,7 @@ function filterSeatingOverview(filter) {
   document.querySelectorAll('#seat-tables-container .col-sm-6').forEach(card => card.classList.remove('d-none'));
   if (search) search.value = '';
   if (category) category.value = 'todos';
-  if (status) status.value = filter === 'com-mesa' ? 'todos' : filter;
+  if (status) status.value = filter;
   if (filter === 'sem-mesa') status.value = 'sem-mesa';
   renderWeddingGuests();
   document.getElementById('seat-guests-container')?.closest('.card')?.scrollIntoView({behavior:'smooth',block:'start'});
@@ -1100,7 +1100,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('wedding-guest-form')?.addEventListener('submit', saveWeddingGuest);
   document.getElementById('seat-guest-search')?.addEventListener('input', renderWeddingGuests);
   document.getElementById('seat-guest-filter')?.addEventListener('change', renderWeddingGuests);
-  document.getElementById('seat-category-filter')?.addEventListener('change', renderWeddingGuests);
   document.getElementById('seat-category-filter')?.addEventListener('change', renderWeddingGuests);
   document.getElementById('pay-type')?.addEventListener('change', populatePaymentSelects);
   document.getElementById('btn-new-service')?.addEventListener('click', () => openModal('service'));
